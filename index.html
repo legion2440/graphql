@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta
+      name="description"
+      content="A static GraphQL profile dashboard for the 01-edu platform."
+    >
+    <title>GraphQL Profile</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section id="login-view" class="login-view" aria-labelledby="login-title">
+        <div class="login-card">
+          <p class="eyebrow">01-edu dashboard</p>
+          <h1 id="login-title">Sign in to your profile</h1>
+          <p class="intro">
+            Use the username or email and password associated with your platform account.
+          </p>
+
+          <form id="login-form" novalidate aria-describedby="login-error">
+            <label for="identifier">Username or email</label>
+            <input
+              id="identifier"
+              name="identifier"
+              type="text"
+              autocomplete="username"
+              required
+            >
+
+            <label for="password">Password</label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              required
+            >
+
+            <p id="login-error" class="form-error" role="alert" aria-live="polite"></p>
+
+            <button id="login-button" type="submit">Sign in</button>
+          </form>
+        </div>
+      </section>
+
+      <section id="profile-view" class="profile-view" aria-labelledby="profile-title" hidden>
+        <header class="profile-header">
+          <div>
+            <p class="eyebrow">GraphQL profile</p>
+            <h1 id="profile-title">Welcome, <span id="header-login"></span></h1>
+          </div>
+          <button id="logout-button" class="secondary-button" type="button">Log out</button>
+        </header>
+
+        <p id="profile-status" class="profile-status" role="status" aria-live="polite"></p>
+
+        <div class="info-grid">
+          <section class="info-card" aria-labelledby="profile-section-title">
+            <h2 id="profile-section-title">Profile</h2>
+            <dl>
+              <div>
+                <dt>Login</dt>
+                <dd id="profile-login">—</dd>
+              </div>
+              <div>
+                <dt>User ID</dt>
+                <dd id="profile-id">—</dd>
+              </div>
+            </dl>
+          </section>
+
+          <section class="info-card" aria-labelledby="xp-section-title">
+            <h2 id="xp-section-title">XP</h2>
+            <dl>
+              <div>
+                <dt>Total XP</dt>
+                <dd id="total-xp">0</dd>
+              </div>
+              <div>
+                <dt>Projects with XP</dt>
+                <dd id="project-count">0</dd>
+              </div>
+              <div>
+                <dt>Latest XP</dt>
+                <dd id="last-xp">No data</dd>
+              </div>
+              <div>
+                <dt>Latest XP date</dt>
+                <dd id="last-xp-date">No data</dd>
+              </div>
+            </dl>
+          </section>
+
+          <section class="info-card" aria-labelledby="audits-section-title">
+            <h2 id="audits-section-title">Audits</h2>
+            <dl>
+              <div>
+                <dt>Audit ratio</dt>
+                <dd id="audit-ratio">0</dd>
+              </div>
+              <div>
+                <dt>Total up</dt>
+                <dd id="total-up">0</dd>
+              </div>
+              <div>
+                <dt>Total down</dt>
+                <dd id="total-down">0</dd>
+              </div>
+            </dl>
+          </section>
+        </div>
+
+        <section class="statistics-section" aria-labelledby="statistics-title">
+          <div class="section-heading">
+            <p class="eyebrow">Visual overview</p>
+            <h2 id="statistics-title">Statistics</h2>
+          </div>
+
+          <div class="charts-grid">
+            <article class="chart-card">
+              <div class="chart-heading">
+                <h3>Cumulative XP over time</h3>
+                <p>Running total for every XP transaction.</p>
+              </div>
+              <div id="cumulative-chart" class="chart-container"></div>
+            </article>
+
+            <article class="chart-card">
+              <div class="chart-heading">
+                <h3>XP by project</h3>
+                <p>All projects, ordered by total XP.</p>
+              </div>
+              <div id="project-chart" class="chart-container chart-container-scroll"></div>
+            </article>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>
