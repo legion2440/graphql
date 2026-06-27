@@ -52,9 +52,12 @@ export const elements = {
   profileFirstName: document.querySelector("#profile-first-name"),
   profileHandle: document.querySelector("#profile-handle"),
   profileUserId: document.querySelector("#profile-user-id"),
+  levelValue: document.querySelector("#level-value"),
+  levelRing: document.querySelector("#level-ring"),
   statTotalXp: document.querySelector("#stat-total-xp"),
   statTotalXpRaw: document.querySelector("#stat-total-xp-raw"),
   statAuditRatio: document.querySelector("#stat-audit-ratio"),
+  statProjectsPassed: document.querySelector("#stat-projects-passed"),
   auditBalanceLabel: document.querySelector("#audit-balance-label"),
   statLatestXp: document.querySelector("#stat-latest-xp"),
   statLatestProject: document.querySelector("#stat-latest-project"),
@@ -80,9 +83,15 @@ export const elements = {
   distributionChart: document.querySelector("#distribution-chart"),
   histogramBins: document.querySelector("#histogram-bins"),
   histogramBinsLabel: document.querySelector("#histogram-bins-label"),
+  distributionButtons: [...document.querySelectorAll("[data-distribution-mode]")],
   techRadar: document.querySelector("#tech-radar"),
   technologyRadar: document.querySelector("#technology-radar"),
+  boardFilterButtons: [...document.querySelectorAll("[data-board-filter]")],
+  boardCountTitle: document.querySelector("#board-count-title"),
+  boardCountNote: document.querySelector("#board-count-note"),
+  leaderboardRows: document.querySelector("#leaderboard-rows"),
   publicRadar: document.querySelector("#public-radar"),
+  publicRadarButtons: [...document.querySelectorAll("[data-public-radar]")],
   publicAvatar: document.querySelector("#public-avatar"),
   publicName: document.querySelector("#public-name"),
   publicHandle: document.querySelector("#public-handle"),
@@ -105,11 +114,86 @@ const loadingStageContent = {
 const renderedStaticCharts = new Set();
 let activeTab = "profile";
 let profileCountUpDone = false;
-let publicCountUpDone = false;
+let currentModel = null;
+let distributionMode = "all";
+let boardFilter = "all";
+let publicRadarMode = "top";
+
+const leaderboardStudents = [
+  ["Aizhan Serikbay", "@sserikba", "Batch 7", 49, 4360175, "visual-scan", "→0"],
+  ["Daniyar Abdrashitov", "@dabdrash", "Batch 1", 48, 4042500, "inspect-vision", "→0"],
+  ["Zhomart Utemissov", "@zutemiss", "Batch 2", 43, 3027375, "visual-scan", "↑1"],
+  ["Alibi Takhtanov", "@atakhtan", "Batch 3", 41, 2577975, "matrix-factorization", "↓1"],
+  ["Ansar Zeinulla", "@azeinulla", "Batch 2", 39, 2281000, "inspect-vision", "↑2"],
+  ["Madina Altynbek", "@maltynbek", "Batch 4", 38, 2104300, "social-network", "→0"],
+  ["Damir Saparov", "@dsaparov", "Batch 5", 37, 1985400, "graphql", "↑1"],
+  ["Sofia Lee", "@slee", "Batch 1", 36, 1840200, "real-time-forum", "↓2"],
+  ["Aruzhan Bekova", "@abekova", "Batch 6", 35, 1722000, "forum", "↑3"],
+  ["Timur Kim", "@tkim", "Batch 3", 34, 1610500, "groupie-tracker", "→0"],
+  ["Yerlan Zhunussov", "@yzhunuss", "Batch 2", 33, 1502800, "net-cat", "↓1"],
+  ["Aibek Nurlanov", "@aibek.n", "Batch 3", 32, 1284480, "social-network", "↑2"],
+  ["Nurzhan Abenov", "@nabenov", "Batch 8", 31, 1190000, "lem-in", "→0"],
+  ["Aliya Serikkyzy", "@aserik", "Batch 4", 30, 1098000, "forum", "↑1"],
+  ["Daniyar Tole", "@dtole", "Batch 9", 29, 1005000, "ascii-art-web", "↓1"],
+  ["Bekzat Orynbek", "@borynbek", "Batch 5", 28, 940000, "make-your-game", "→0"],
+  ["Aigerim Onalbaeva", "@aonalba", "Batch 7", 27, 872000, "graphql", "↑2"],
+  ["Ruslan Ismailov", "@rismailov", "Batch 6", 26, 805000, "forum", "→0"],
+  ["Adam Bakashev", "@abakashev", "Batch 8", 25, 740000, "net-cat", "↑1"],
+  ["Elya Ligai", "@eligai", "Batch 9", 24, 690000, "lem-in", "↓1"],
+  ["Nikola Sadirak", "@nsadirak", "Staff", 60, 9920000, "mentoring", "→0"],
+  ["Arman Tulegenov", "@armant", "Staff", 55, 8540000, "code-review", "→0"],
+].map(([name, handle, batch, level, xp, project, trend], index) => ({
+  name,
+  handle,
+  batch,
+  level,
+  xp,
+  project,
+  trend,
+  avatar: [
+    "linear-gradient(135deg,#f472b6,#a855f7)",
+    "linear-gradient(135deg,#2dd4bf,#3b82f6)",
+    "linear-gradient(135deg,#fbbf24,#f97316)",
+    "linear-gradient(135deg,#818cf8,#6366f1)",
+    "linear-gradient(135deg,#38bdf8,#2563eb)",
+    "linear-gradient(135deg,#a3e635,#22c55e)",
+    "linear-gradient(135deg,#fb7185,#e11d48)",
+    "linear-gradient(135deg,#34d399,#0ea5e9)",
+  ][index % 8],
+}));
+
+const publicRadarData = {
+  top: [
+    { label: "Go", value: 88 },
+    { label: "Algo", value: 82 },
+    { label: "Back", value: 78 },
+    { label: "SQL", value: 74 },
+    { label: "Front", value: 70 },
+    { label: "Git", value: 86 },
+  ],
+  all: [
+    { label: "Go", value: 86 },
+    { label: "Git", value: 100 },
+    { label: "JS", value: 43 },
+    { label: "HTML", value: 75 },
+    { label: "CSS", value: 50 },
+    { label: "SQL", value: 33 },
+    { label: "Unix", value: 17 },
+    { label: "Docker", value: 15 },
+    { label: "Rust", value: 0 },
+    { label: "GraphQL", value: 0 },
+  ],
+};
 
 function setText(element, value) {
   if (element) {
     element.textContent = value;
+  }
+}
+
+function setActiveButton(buttons, value, attribute) {
+  for (const button of buttons) {
+    button.classList.toggle("active", button.dataset[attribute] === value);
   }
 }
 
@@ -177,6 +261,44 @@ function animateNumber(element, target, formatter, decimals = 0) {
   requestAnimationFrame(step);
 }
 
+function animateRing(element, targetPercent) {
+  if (!element) {
+    return;
+  }
+
+  const safeTarget = Math.max(0, Math.min(100, Number.isFinite(targetPercent) ? targetPercent : 0));
+  const paint = (value) => {
+    element.style.background = `conic-gradient(var(--blue) ${value}%, var(--grid) 0)`;
+  };
+
+  if (prefersReducedMotion()) {
+    paint(safeTarget);
+    return;
+  }
+
+  const duration = 950;
+  const start = performance.now();
+  const ease = (value) => 1 - (1 - value) ** 3;
+  const step = (now) => {
+    const progress = Math.min(1, (now - start) / duration);
+    paint(Number((safeTarget * ease(progress)).toFixed(2)));
+
+    if (progress < 1) {
+      requestAnimationFrame(step);
+    } else {
+      paint(safeTarget);
+    }
+  };
+
+  paint(0);
+  requestAnimationFrame(step);
+}
+
+function getDataNumber(element, name, fallback) {
+  const value = Number(element?.dataset?.[name]);
+  return Number.isFinite(value) ? value : fallback;
+}
+
 function maybeRunProfileCountUp(model) {
   if (profileCountUpDone || activeTab !== "profile") {
     return;
@@ -185,17 +307,9 @@ function maybeRunProfileCountUp(model) {
   profileCountUpDone = true;
   animateNumber(elements.statTotalXp, model.totalXp, formatXp, 0);
   animateNumber(elements.statAuditRatio, model.user.auditRatio, formatNumber, 2);
-  animateNumber(elements.auditBigRatio, model.user.auditRatio, formatNumber, 2);
-}
-
-function maybeRunPublicCountUp(model) {
-  if (publicCountUpDone || activeTab !== "public") {
-    return;
-  }
-
-  publicCountUpDone = true;
-  animateNumber(elements.publicTotalXp, model.totalXp, formatXp, 0);
-  animateNumber(elements.publicAuditRatio, model.user.auditRatio, formatNumber, 2);
+  animateNumber(elements.levelValue, getDataNumber(elements.levelValue, "countPlaceholder", 32), String, 0);
+  animateNumber(elements.statProjectsPassed, getDataNumber(elements.statProjectsPassed, "countPlaceholder", 47), String, 0);
+  animateRing(elements.levelRing, getDataNumber(elements.levelRing, "ringTarget", 58));
 }
 
 function buildModel(user, transactions) {
@@ -259,22 +373,112 @@ function renderPlaceholderCharts() {
       ],
       "Placeholder technologies radar",
     );
-    renderRadarChart(
-      elements.publicRadar,
-      [
-        { label: "Go", value: 88 },
-        { label: "Algo", value: 82 },
-        { label: "Back", value: 78 },
-        { label: "SQL", value: 74 },
-        { label: "Front", value: 70 },
-        { label: "Git", value: 86 },
-      ],
-      "Placeholder public skills radar",
-    );
     renderCompareChart(elements.compareChart);
-    renderDistributionHistogram(elements.distributionChart, Number(elements.histogramBins.value), "all");
     renderedStaticCharts.add("radars");
   }
+
+  renderDistribution();
+  renderLeaderboard();
+  renderPublicRadar();
+}
+
+function renderDistribution() {
+  if (!elements.distributionChart || !elements.histogramBins) {
+    return;
+  }
+
+  const bins = Number(elements.histogramBins.value);
+  setText(elements.histogramBinsLabel, String(bins));
+  setActiveButton(elements.distributionButtons, distributionMode, "distributionMode");
+  renderDistributionHistogram(elements.distributionChart, bins, distributionMode);
+}
+
+function renderPublicRadar() {
+  if (!elements.publicRadar) {
+    return;
+  }
+
+  setActiveButton(elements.publicRadarButtons, publicRadarMode, "publicRadar");
+  renderRadarChart(elements.publicRadar, publicRadarData[publicRadarMode], "Placeholder public skills radar");
+}
+
+function formatLeaderboardXp(value) {
+  return formatXp(value).replace(/\s/g, " ");
+}
+
+function getTrendClass(trend) {
+  if (trend.startsWith("↑")) {
+    return "trend-up";
+  }
+  if (trend.startsWith("↓")) {
+    return "trend-down";
+  }
+  return "trend-flat";
+}
+
+function renderLeaderboard() {
+  if (!elements.leaderboardRows) {
+    return;
+  }
+
+  const sorted = [...leaderboardStudents].sort((left, right) => right.xp - left.xp);
+  const filtered = boardFilter === "all" ? sorted : sorted.filter((student) => student.batch === boardFilter);
+  const label = boardFilter === "all" ? "все потоки" : boardFilter;
+  setText(elements.boardCountTitle, `${label} · ${filtered.length} студентов`);
+  setText(elements.boardCountNote, `Сортировка по XP · показано: ${filtered.length}`);
+  setActiveButton(elements.boardFilterButtons, boardFilter, "boardFilter");
+  elements.leaderboardRows.replaceChildren();
+
+  filtered.forEach((student, index) => {
+    const rank = sorted.findIndex((item) => item === student) + 1;
+    const row = document.createElement("div");
+    row.className = "leader-row";
+    if (student.handle === "@aibek.n") {
+      row.classList.add("is-you");
+    }
+
+    const rankCell = document.createElement("span");
+    rankCell.className = `leader-rank${rank <= 3 ? ` rank-${rank}` : ""}`;
+    rankCell.textContent = `#${rank}`;
+
+    const avatar = document.createElement("span");
+    avatar.className = "leader-avatar";
+    avatar.style.background = student.avatar;
+    avatar.textContent = getInitials(student.name);
+
+    const person = document.createElement("div");
+    person.className = "leader-person";
+    const nameLine = document.createElement("span");
+    nameLine.className = "leader-name-line";
+    const name = document.createElement("b");
+    name.textContent = student.name;
+    nameLine.append(name);
+    if (student.handle === "@aibek.n") {
+      const badge = document.createElement("span");
+      badge.className = "you-badge";
+      badge.textContent = "ты";
+      nameLine.append(badge);
+    }
+    const meta = document.createElement("small");
+    meta.textContent = `${student.handle} · ${student.batch}`;
+    person.append(nameLine, meta);
+
+    const level = document.createElement("span");
+    level.textContent = String(student.level);
+
+    const xp = document.createElement("span");
+    xp.textContent = formatLeaderboardXp(student.xp);
+
+    const project = document.createElement("span");
+    project.textContent = student.project;
+
+    const trend = document.createElement("em");
+    trend.className = getTrendClass(student.trend);
+    trend.textContent = student.trend;
+
+    row.append(rankCell, avatar, person, level, xp, project, trend);
+    elements.leaderboardRows.append(row);
+  });
 }
 
 function bindTabButton(button) {
@@ -324,6 +528,11 @@ export function setActiveTab(tabName) {
   for (const panel of elements.panels) {
     panel.hidden = panel.id !== `panel-${nextTab}`;
   }
+
+  document.dispatchEvent(new CustomEvent("under-construction-hide"));
+  if (activeTab === "profile" && currentModel) {
+    maybeRunProfileCountUp(currentModel);
+  }
 }
 
 export function setView(viewName) {
@@ -344,7 +553,7 @@ export function setLoginLoading(isLoading) {
 }
 
 export function setLoginError(message = "") {
-  elements.loginError.textContent = message;
+  elements.loginError.textContent = message ? `⚠ ${message}` : "";
 }
 
 export function resetLoginPreview() {
@@ -377,11 +586,13 @@ export function updateLoadingStage(key, state, status) {
 
 export function resetDashboard() {
   profileCountUpDone = false;
-  publicCountUpDone = false;
+  currentModel = null;
   setText(elements.headerAvatar, "—");
   setText(elements.profileFirstName, "—");
   setText(elements.profileHandle, "@—");
   setText(elements.profileUserId, "#—");
+  setText(elements.levelValue, "0");
+  setText(elements.statProjectsPassed, "0");
   setText(elements.statTotalXp, "0 B");
   setText(elements.statTotalXpRaw, "0 bytes");
   setText(elements.statAuditRatio, "0");
@@ -390,7 +601,7 @@ export function resetDashboard() {
   setText(elements.statLatestProject, "Нет проекта");
   setText(elements.statLatestDate, "Нет даты");
   setText(elements.infoLogin, "—");
-  setText(elements.infoId, "—");
+  setText(elements.infoId, "#—");
   setText(elements.publicAvatar, "—");
   setText(elements.publicName, "—");
   setText(elements.publicHandle, "@—");
@@ -400,11 +611,15 @@ export function resetDashboard() {
   elements.projectChart.replaceChildren();
   elements.activityHeatmap.replaceChildren();
   elements.auditRadial.replaceChildren();
+  if (elements.levelRing) {
+    elements.levelRing.style.background = "conic-gradient(var(--blue) 0%, var(--grid) 0)";
+  }
   resetLoginPreview();
 }
 
 export function renderDashboard(user, transactions) {
   const model = buildModel(user, transactions);
+  currentModel = model;
   const initials = getInitials(user.login);
   const firstName = getFirstName(user.login);
   const latest = model.latest;
@@ -431,7 +646,7 @@ export function renderDashboard(user, transactions) {
   setText(elements.auditUpValue, formatXp(user.totalUp));
   setText(elements.auditDownValue, formatXp(user.totalDown));
   setText(elements.infoLogin, user.login);
-  setText(elements.infoId, String(user.id));
+  setText(elements.infoId, `#${user.id}`);
   setText(elements.activitySummary, `${model.heatmap.activeDays} активных дней · ${model.heatmap.weeks} недель · ${model.heatmap.period}`);
   setText(elements.radialRatio, formatNumber(user.auditRatio));
   setText(elements.publicAvatar, initials);
@@ -452,7 +667,6 @@ export function renderDashboard(user, transactions) {
   renderPlaceholderCharts();
 
   maybeRunProfileCountUp(model);
-  maybeRunPublicCountUp(model);
 }
 
 export function initializeUi({ onLogin, onLogout }) {
@@ -468,16 +682,27 @@ export function initializeUi({ onLogin, onLogout }) {
   });
 
   elements.histogramBins.addEventListener("input", () => {
-    const value = Number(elements.histogramBins.value);
-    setText(elements.histogramBinsLabel, String(value));
-    renderDistributionHistogram(elements.distributionChart, value, "all");
+    renderDistribution();
   });
 
-  document.querySelectorAll(".chip-row button, .segmented button").forEach((button) => {
+  elements.distributionButtons.forEach((button) => {
     button.addEventListener("click", () => {
-      const group = button.parentElement;
-      group.querySelectorAll("button").forEach((item) => item.classList.remove("active"));
-      button.classList.add("active");
+      distributionMode = button.dataset.distributionMode;
+      renderDistribution();
+    });
+  });
+
+  elements.boardFilterButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      boardFilter = button.dataset.boardFilter;
+      renderLeaderboard();
+    });
+  });
+
+  elements.publicRadarButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      publicRadarMode = button.dataset.publicRadar;
+      renderPublicRadar();
     });
   });
 

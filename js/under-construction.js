@@ -1,5 +1,6 @@
 const TOOLTIP_TEXT = "Under construction";
 const PLACEHOLDER_SELECTOR = "[data-placeholder]";
+const INTERACTIVE_SELECTOR = "button, input, select, textarea, a, label, [role='button'], [role='tab']";
 
 function createTooltip(root) {
   const tooltip = document.createElement("div");
@@ -14,7 +15,16 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
+function isHidden(target) {
+  return !target.isConnected || target.closest("[hidden]") || target.getClientRects().length === 0;
+}
+
 function positionTooltip(tooltip, target) {
+  if (isHidden(target)) {
+    tooltip.hidden = true;
+    return false;
+  }
+
   const targetRect = target.getBoundingClientRect();
   tooltip.hidden = false;
   const tooltipRect = tooltip.getBoundingClientRect();
@@ -32,23 +42,48 @@ function positionTooltip(tooltip, target) {
 
   tooltip.style.left = `${left}px`;
   tooltip.style.top = `${top}px`;
+  return true;
 }
 
-export function initUnderConstruction(root = document.body) {
-  const tooltip = createTooltip(document.body);
-  let activeTarget = null;
-  let touchPinned = false;
+function getPlaceholderTarget(event, root) {
+  const target = event.target.closest?.(PLACEHOLDER_SELECTOR);
+  return target && root.contains(target) ? target : null;
+}
 
-  const show = (target, pinned = false) => {
+function isInteractiveInsidePlaceholder(event, target) {
+  const interactive = event.target.closest?.(INTERACTIVE_SELECTOR);
+  return Boolean(interactive && target?.contains(interactive) && interactive !== target);
+}
+
+export function initUnderConstruction(root = document.querySelector(".ts-root") ?? document.body) {
+  const tooltipRoot = root.closest?.(".ts-root") ?? root;
+  const tooltip = createTooltip(tooltipRoot);
+  let activeTarget = null;
+  let pinnedPointerType = null;
+
+  const show = (target, pointerType = null) => {
     activeTarget = target;
-    touchPinned = pinned;
-    positionTooltip(tooltip, target);
+    pinnedPointerType = pointerType;
+    if (!positionTooltip(tooltip, target)) {
+      activeTarget = null;
+      pinnedPointerType = null;
+    }
   };
 
   const hide = () => {
     activeTarget = null;
-    touchPinned = false;
+    pinnedPointerType = null;
     tooltip.hidden = true;
+  };
+
+  const reposition = () => {
+    if (!activeTarget) {
+      return;
+    }
+
+    if (!positionTooltip(tooltip, activeTarget)) {
+      hide();
+    }
   };
 
   root.querySelectorAll(PLACEHOLDER_SELECTOR).forEach((element) => {
@@ -61,22 +96,22 @@ export function initUnderConstruction(root = document.body) {
   });
 
   root.addEventListener("pointerover", (event) => {
-    if (event.pointerType === "touch") {
+    if (event.pointerType === "touch" || event.pointerType === "pen") {
       return;
     }
 
-    const target = event.target.closest?.(PLACEHOLDER_SELECTOR);
-    if (target && root.contains(target)) {
+    const target = getPlaceholderTarget(event, root);
+    if (target && !isInteractiveInsidePlaceholder(event, target)) {
       show(target);
     }
   });
 
   root.addEventListener("pointerout", (event) => {
-    if (event.pointerType === "touch" || touchPinned) {
+    if (event.pointerType === "touch" || event.pointerType === "pen" || pinnedPointerType) {
       return;
     }
 
-    const target = event.target.closest?.(PLACEHOLDER_SELECTOR);
+    const target = getPlaceholderTarget(event, root);
     if (!target || !activeTarget || target !== activeTarget) {
       return;
     }
@@ -88,43 +123,51 @@ export function initUnderConstruction(root = document.body) {
   });
 
   root.addEventListener("focusin", (event) => {
-    const target = event.target.closest?.(PLACEHOLDER_SELECTOR);
-    if (target && root.contains(target)) {
+    const target = getPlaceholderTarget(event, root);
+    if (target && !isInteractiveInsidePlaceholder(event, target)) {
       show(target);
     }
   });
 
   root.addEventListener("focusout", (event) => {
-    if (touchPinned) {
+    if (pinnedPointerType) {
       return;
     }
 
-    const target = event.target.closest?.(PLACEHOLDER_SELECTOR);
+    const target = getPlaceholderTarget(event, root);
     const related = event.relatedTarget;
     if (target && (!related || !target.contains(related))) {
       hide();
     }
   });
 
-  root.addEventListener("click", (event) => {
-    const target = event.target.closest?.(PLACEHOLDER_SELECTOR);
+  root.addEventListener("pointerup", (event) => {
+    const target = getPlaceholderTarget(event, root);
 
-    if (!target || !root.contains(target)) {
+    if (!target || isInteractiveInsidePlaceholder(event, target)) {
+      return;
+    }
+
+    if (event.pointerType === "mouse") {
+      return;
+    }
+
+    event.preventDefault();
+    if (activeTarget === target && pinnedPointerType) {
       hide();
       return;
     }
 
-    if (activeTarget === target && touchPinned) {
-      hide();
-      return;
-    }
-
-    show(target, true);
+    show(target, event.pointerType);
   });
 
-  document.addEventListener("click", (event) => {
-    const target = event.target.closest?.(PLACEHOLDER_SELECTOR);
-    if (!target && activeTarget) {
+  document.addEventListener("pointerup", (event) => {
+    if (!activeTarget || (event.pointerType === "mouse" && !pinnedPointerType)) {
+      return;
+    }
+
+    const target = getPlaceholderTarget(event, root);
+    if (target !== activeTarget) {
       hide();
     }
   });
@@ -135,11 +178,9 @@ export function initUnderConstruction(root = document.body) {
     }
   });
 
-  window.addEventListener("resize", () => {
-    if (activeTarget) {
-      positionTooltip(tooltip, activeTarget);
-    }
-  });
+  document.addEventListener("under-construction-hide", hide);
+  window.addEventListener("resize", reposition);
+  window.addEventListener("scroll", reposition, true);
 
   return { hide };
 }

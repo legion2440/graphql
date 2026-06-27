@@ -180,6 +180,11 @@
                   <ellipse class="meridian meridian-d" cx="50" cy="50" rx="45" ry="45"></ellipse>
                 </g>
                 <circle cx="50" cy="50" r="45" fill="none" stroke="#7fd4ff" stroke-width="2" opacity=".95"></circle>
+                <g clip-path="url(#globe-clip-header)" fill="#aee6ff">
+                  <circle class="twinkle twinkle-a" cx="34" cy="40" r="1.6"></circle>
+                  <circle class="twinkle twinkle-b" cx="68" cy="58" r="1.4"></circle>
+                  <circle class="twinkle twinkle-c" cx="58" cy="29" r="1.2"></circle>
+                </g>
               </svg>
             </div>
             <div>
@@ -214,7 +219,7 @@
             <section class="hero-card">
               <div class="hero-copy">
                 <div class="mono-accent" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">ASTANA · ALEM.AI</div>
-                <h1>Привет, <span id="profile-first-name">—</span></h1>
+                <h1>Привет, <span id="profile-first-name">—</span> 👋</h1>
                 <div class="identity-line">
                   <span id="profile-handle">@—</span>
                   <span>·</span>
@@ -228,8 +233,8 @@
                   <strong>до LVL 33</strong>
                   <small>63.1 kB до апа</small>
                 </div>
-                <div class="level-ring">
-                  <div><strong>32</strong><span>LEVEL</span></div>
+                <div id="level-ring" class="level-ring" data-ring-target="58">
+                  <div><strong id="level-value" data-count-placeholder="32">32</strong><span>LEVEL</span></div>
                 </div>
               </div>
             </section>
@@ -242,7 +247,7 @@
               </article>
               <article class="stat-card ts-card" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
                 <span>ПРОЕКТОВ ПРОЙДЕНО</span>
-                <strong>47</strong>
+                <strong id="stat-projects-passed" data-count-placeholder="47">47</strong>
                 <small class="lime-text">↑ +3 за неделю</small>
               </article>
               <article class="stat-card ts-card">
@@ -252,7 +257,7 @@
               </article>
               <article class="stat-card ts-card">
                 <span>ПОСЛЕДНЯЯ XP</span>
-                <strong id="stat-latest-xp" class="cyan-text">No data</strong>
+                <strong id="stat-latest-xp" class="latest-xp-value cyan-text">No data</strong>
                 <small><span id="stat-latest-project">No project</span> · <span id="stat-latest-date">No date</span></small>
               </article>
             </section>
@@ -260,23 +265,23 @@
             <section class="triple-grid">
               <article class="rank-card ts-card" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
                 <div class="card-head">
-                  <span>🛡 ТЕКУЩИЙ РАНГ</span>
+                  <span class="card-label"><span class="card-icon">🛡</span><span>ТЕКУЩИЙ РАНГ</span></span>
                   <button class="link-button" type="button" data-tab-link="progress">все ранги →</button>
                 </div>
                 <strong>Assistant developer</strong>
                 <div>
                   <div class="progress-label"><span>до ранга Basic developer</span><span>8 уровня</span></div>
-                  <div class="mini-progress"><span style="width: 58%"></span></div>
+                  <div class="mini-progress"><span class="ts-fill" style="width: 58%"></span></div>
                 </div>
               </article>
               <article class="compact-card ts-card" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
-                <span>⚑ CHECKPOINT</span>
+                <span class="card-label"><span class="card-icon">⚑</span><span>CHECKPOINT</span></span>
                 <strong>100</strong>
                 <small>контрольный уровень</small>
               </article>
               <article class="compact-card ts-card" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
-                <span>⚙ ПОСЛЕДНИЙ НАВЫК</span>
-                <strong class="cyan-text">AI</strong>
+                <span class="card-label"><span class="card-icon">⚙</span><span>ПОСЛЕДНИЙ НАВЫК</span></span>
+                <strong class="last-skill-value cyan-text">AI</strong>
                 <small>недавно прокачан</small>
               </article>
             </section>
@@ -301,11 +306,11 @@
                 </div>
                 <div class="audit-bar">
                   <div class="progress-label"><span>Сделано (отдано)</span><span id="audit-up-value">0 B</span></div>
-                  <div class="mini-progress"><span id="audit-up-bar"></span></div>
+                  <div class="mini-progress"><span id="audit-up-bar" class="ts-fill"></span></div>
                 </div>
                 <div class="audit-bar">
                   <div class="progress-label"><span>Получено</span><span id="audit-down-value">0 B</span></div>
-                  <div class="mini-progress cyan-fill"><span id="audit-down-bar"></span></div>
+                  <div class="mini-progress cyan-fill"><span id="audit-down-bar" class="ts-fill"></span></div>
                 </div>
               </article>
 
@@ -313,7 +318,7 @@
                 <h2>Профиль</h2>
                 <dl>
                   <div><dt>Логин</dt><dd id="info-login">—</dd></div>
-                  <div><dt>ID</dt><dd id="info-id">—</dd></div>
+                  <div><dt>ID</dt><dd id="info-id">#—</dd></div>
                   <div data-placeholder tabindex="0" aria-label="Under construction. Placeholder data."><dt>Кампус</dt><dd>Astana</dd></div>
                   <div data-placeholder tabindex="0" aria-label="Under construction. Placeholder data."><dt>Когорта</dt><dd>Бассейн #3</dd></div>
                 </dl>
@@ -392,33 +397,41 @@
             </section>
             <div class="tier-legend" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
               <span>ТИРЫ:</span>
-              <strong class="cyan-text">★☆☆ Code Explorer</strong>
-              <strong>★★☆ Bug Squasher</strong>
-              <strong>★★★ Script Wizard</strong>
-              <strong class="lime-text">★★★★ Master Hacker</strong>
+              <strong class="tier-code">★☆☆ Code Explorer</strong>
+              <strong class="tier-bug">★★☆ Bug Squasher</strong>
+              <strong class="tier-script">★★★ Script Wizard</strong>
+              <strong class="tier-master">★★★★ Master Hacker</strong>
             </div>
             <section data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
               <h3 class="subhead">Технические навыки</h3>
               <p class="muted-copy">То, что ты освоил из проектов, пиков и экзаменов</p>
-              <div class="skill-card-grid">
-                <article class="skill-card ts-card"><div><strong>Elementary programming</strong><span>59/59</span></div><em>Master Hacker ★★★★</em><i style="width: 100%"></i></article>
-                <article class="skill-card ts-card"><div><strong>Back-end</strong><span>15/25</span></div><em>Bug Squasher ★★☆</em><i style="width: 60%"></i></article>
-                <article class="skill-card ts-card"><div><strong>Front-end</strong><span>9/20</span></div><em>Bug Squasher ★★☆</em><i style="width: 45%"></i></article>
-                <article class="skill-card ts-card"><div><strong>Elementary algorithms</strong><span>6/14</span></div><em>Bug Squasher ★★☆</em><i style="width: 43%"></i></article>
-                <article class="skill-card ts-card"><div><strong>AI</strong><span>5/25</span></div><em>Bug Squasher ★★☆</em><i style="width: 20%"></i></article>
-                <article class="skill-card ts-card"><div><strong>TCP/IP</strong><span>1/6</span></div><em>Bug Squasher ★★☆</em><i style="width: 17%"></i></article>
+              <div class="skill-card-grid skill-card-grid-tech">
+                <article class="skill-card ts-card"><div><strong>Elementary programming</strong><span>59/59</span></div><em class="tier-master">Master Hacker ★★★★</em><i class="ts-fill" style="width: 100%"></i></article>
+                <article class="skill-card ts-card"><div><strong>Back-end</strong><span>15/25</span></div><em class="tier-bug">Bug Squasher ★★☆</em><i class="ts-fill" style="width: 60%"></i></article>
+                <article class="skill-card ts-card"><div><strong>Front-end</strong><span>9/20</span></div><em class="tier-bug">Bug Squasher ★★☆</em><i class="ts-fill" style="width: 45%"></i></article>
+                <article class="skill-card ts-card"><div><strong>Elementary algorithms</strong><span>6/14</span></div><em class="tier-bug">Bug Squasher ★★☆</em><i class="ts-fill" style="width: 43%"></i></article>
+                <article class="skill-card ts-card"><div><strong>AI</strong><span>5/25</span></div><em class="tier-bug">Bug Squasher ★★☆</em><i class="ts-fill" style="width: 20%"></i></article>
+                <article class="skill-card ts-card"><div><strong>TCP/IP</strong><span>1/6</span></div><em class="tier-bug">Bug Squasher ★★☆</em><i class="ts-fill" style="width: 17%"></i></article>
+                <article class="skill-card ts-card"><div><strong>Statistics</strong><span>2/2</span></div><em class="tier-code">Code Explorer ★☆☆</em><i class="ts-fill" style="width: 100%"></i></article>
+                <article class="skill-card ts-card"><div><strong>Game programming</strong><span>4/20</span></div><em class="tier-code">Code Explorer ★☆☆</em><i class="ts-fill" style="width: 20%"></i></article>
+                <article class="skill-card ts-card"><div><strong>System administration</strong><span>4/13</span></div><em class="tier-code">Code Explorer ★☆☆</em><i class="ts-fill" style="width: 31%"></i></article>
+                <article class="skill-card ts-card"><div><strong>Cybersecurity</strong><span>0/9</span></div><em class="tier-none">нет прогресса</em><i class="ts-fill" style="width: 0"></i></article>
               </div>
             </section>
             <section data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
               <h3 class="subhead">Технологии</h3>
               <p class="muted-copy">Языки, фреймворки и платформы из проектов</p>
-              <div class="skill-card-grid">
-                <article class="skill-card ts-card"><div><strong>Go</strong><span>19/22</span></div><em>Script Wizard ★★★</em><i style="width: 86%"></i></article>
-                <article class="skill-card ts-card"><div><strong>Git</strong><span>1/1</span></div><em>Bug Squasher ★★☆</em><i style="width: 100%"></i></article>
-                <article class="skill-card ts-card"><div><strong>JavaScript</strong><span>3/7</span></div><em>Bug Squasher ★★☆</em><i style="width: 43%"></i></article>
-                <article class="skill-card ts-card"><div><strong>HTML</strong><span>6/8</span></div><em>Bug Squasher ★★☆</em><i style="width: 75%"></i></article>
-                <article class="skill-card ts-card"><div><strong>SQL</strong><span>1/3</span></div><em>Code Explorer ★☆☆</em><i style="width: 33%"></i></article>
-                <article class="skill-card ts-card"><div><strong>Docker</strong><span>2/13</span></div><em>Code Explorer ★☆☆</em><i style="width: 15%"></i></article>
+              <div class="skill-card-grid skill-card-grid-techno">
+                <article class="skill-card ts-card"><div><strong>Go</strong><span>19/22</span></div><em class="tier-script">Script Wizard ★★★</em><i class="ts-fill" style="width: 86%"></i></article>
+                <article class="skill-card ts-card"><div><strong>Git</strong><span>1/1</span></div><em class="tier-bug">Bug Squasher ★★☆</em><i class="ts-fill" style="width: 100%"></i></article>
+                <article class="skill-card ts-card"><div><strong>JavaScript</strong><span>3/7</span></div><em class="tier-bug">Bug Squasher ★★☆</em><i class="ts-fill" style="width: 43%"></i></article>
+                <article class="skill-card ts-card"><div><strong>HTML</strong><span>6/8</span></div><em class="tier-bug">Bug Squasher ★★☆</em><i class="ts-fill" style="width: 75%"></i></article>
+                <article class="skill-card ts-card"><div><strong>SQL</strong><span>1/3</span></div><em class="tier-code">Code Explorer ★☆☆</em><i class="ts-fill" style="width: 33%"></i></article>
+                <article class="skill-card ts-card"><div><strong>CSS</strong><span>2/4</span></div><em class="tier-code">Code Explorer ★☆☆</em><i class="ts-fill" style="width: 50%"></i></article>
+                <article class="skill-card ts-card"><div><strong>Unix</strong><span>2/12</span></div><em class="tier-code">Code Explorer ★☆☆</em><i class="ts-fill" style="width: 17%"></i></article>
+                <article class="skill-card ts-card"><div><strong>Docker</strong><span>2/13</span></div><em class="tier-code">Code Explorer ★☆☆</em><i class="ts-fill" style="width: 15%"></i></article>
+                <article class="skill-card ts-card"><div><strong>Rust</strong><span>0/6</span></div><em class="tier-none">нет прогресса</em><i class="ts-fill" style="width: 0"></i></article>
+                <article class="skill-card ts-card"><div><strong>GraphQL</strong><span>0/1</span></div><em class="tier-none">нет прогресса</em><i class="ts-fill" style="width: 0"></i></article>
               </div>
             </section>
           </section>
@@ -445,7 +458,7 @@
               </div>
               <div id="cumulative-chart" class="chart-box"></div>
             </section>
-            <section class="stats-split">
+            <section class="stats-split stats-main-grid">
               <article class="wide-card">
                 <h3>XP по проектам</h3>
                 <div id="project-chart" class="project-chart-box"></div>
@@ -465,7 +478,7 @@
                 </div>
               </article>
             </section>
-            <section class="stats-split">
+            <section class="stats-split stats-skills-grid">
               <article class="wide-card radar-card" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
                 <h3>Навыки</h3>
                 <div id="stats-skills-radar"></div>
@@ -473,19 +486,22 @@
               <article class="wide-card" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
                 <h3>Разбивка навыков</h3>
                 <div class="breakdown-list">
-                  <div><span>Golang</span><i><b style="width: 88%"></b></i><strong>88</strong></div>
-                  <div><span>JavaScript</span><i><b style="width: 78%"></b></i><strong>78</strong></div>
-                  <div><span>Rust</span><i><b style="width: 54%"></b></i><strong>54</strong></div>
-                  <div><span>Algorithms</span><i><b style="width: 70%"></b></i><strong>70</strong></div>
-                  <div><span>SQL</span><i><b style="width: 62%"></b></i><strong>62</strong></div>
-                  <div><span>HTML/CSS</span><i><b style="width: 82%"></b></i><strong>82</strong></div>
+                  <div><span>Golang</span><i><b class="ts-fill" style="width: 88%"></b></i><strong>88</strong></div>
+                  <div><span>JavaScript</span><i><b class="ts-fill" style="width: 78%"></b></i><strong>78</strong></div>
+                  <div><span>Rust</span><i><b class="ts-fill" style="width: 54%"></b></i><strong>54</strong></div>
+                  <div><span>Algorithms</span><i><b class="ts-fill" style="width: 70%"></b></i><strong>70</strong></div>
+                  <div><span>SQL</span><i><b class="ts-fill" style="width: 62%"></b></i><strong>62</strong></div>
+                  <div><span>HTML/CSS</span><i><b class="ts-fill" style="width: 82%"></b></i><strong>82</strong></div>
                 </div>
               </article>
             </section>
             <section class="wide-card" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
               <div class="section-title-row">
                 <h3>Ты против потока</h3>
-                <span>ты · 1.28 MB / средний студент · 540 kB</span>
+                <span class="compare-legend">
+                  <span><i class="solid"></i>ты · 1.28 MB</span>
+                  <span><i class="dashed"></i>средний студент · 540 kB</span>
+                </span>
               </div>
               <p class="muted-copy">Накопленный XP в сравнении со средним по всем потокам</p>
               <div id="compare-chart"></div>
@@ -493,7 +509,10 @@
             <section class="wide-card" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
               <div class="section-title-row">
                 <h3>Распределение студентов по XP</h3>
-                <span class="segmented"><button type="button" class="active">Все потоки</button><button type="button">Batch 3</button></span>
+                <span class="segmented distribution-controls">
+                  <button type="button" class="active" data-distribution-mode="all">Все потоки</button>
+                  <button type="button" data-distribution-mode="batch">Batch 3</button>
+                </span>
               </div>
               <p class="muted-copy">Твой диапазон XP подсвечен — видно, где ты в общей массе</p>
               <div class="range-row">
@@ -511,25 +530,26 @@
                 <p>// СООБЩЕСТВО</p>
                 <h2>Общий рейтинг</h2>
               </div>
-              <span>все потоки · 22 студентов</span>
+              <span id="board-count-title">все потоки · 22 студентов</span>
             </div>
             <div class="chip-row" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
-              <button type="button" class="active">Все</button><button type="button">Batch 1</button><button type="button">Batch 2</button><button type="button">Batch 3</button><button type="button">Batch 4</button><button type="button">Batch 5</button><button type="button">Batch 6</button><button type="button">Batch 7</button><button type="button">Batch 8</button><button type="button">Batch 9</button><button type="button">Staff</button>
+              <button type="button" class="active" data-board-filter="all">Все</button>
+              <button type="button" data-board-filter="Batch 1">Batch 1</button>
+              <button type="button" data-board-filter="Batch 2">Batch 2</button>
+              <button type="button" data-board-filter="Batch 3">Batch 3</button>
+              <button type="button" data-board-filter="Batch 4">Batch 4</button>
+              <button type="button" data-board-filter="Batch 5">Batch 5</button>
+              <button type="button" data-board-filter="Batch 6">Batch 6</button>
+              <button type="button" data-board-filter="Batch 7">Batch 7</button>
+              <button type="button" data-board-filter="Batch 8">Batch 8</button>
+              <button type="button" data-board-filter="Batch 9">Batch 9</button>
+              <button type="button" data-board-filter="Staff">Staff</button>
             </div>
-            <div class="board-note" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">Сортировка по XP · показано: 22</div>
+            <div id="board-count-note" class="board-note" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">Сортировка по XP · показано: 22</div>
             <section class="leaderboard-card" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
               <div class="leaderboard-table">
                 <div class="leader-head"><span>РАНГ</span><span></span><span>СТУДЕНТ</span><span>УР.</span><span>XP</span><span>ПРОЕКТ</span><span>ТРЕНД</span></div>
-                <div><strong>1</strong><i>AS</i><span><b>Aizhan Serikbay</b><small>@sserikba · Batch 7</small></span><em>49</em><em>4 360 175</em><em>visual-scan</em><em>→0</em></div>
-                <div><strong>2</strong><i>DA</i><span><b>Daniyar Abdrashitov</b><small>@dabdrash · Batch 1</small></span><em>48</em><em>4 042 500</em><em>inspect-vision</em><em>→0</em></div>
-                <div><strong>3</strong><i>ZU</i><span><b>Zhomart Utemissov</b><small>@zutemiss · Batch 2</small></span><em>43</em><em>3 027 375</em><em>visual-scan</em><em>↑1</em></div>
-                <div><strong>4</strong><i>AT</i><span><b>Alibi Takhtanov</b><small>@atakhtan · Batch 3</small></span><em>41</em><em>2 577 975</em><em>matrix-factorization</em><em>↓1</em></div>
-                <div><strong>5</strong><i>AZ</i><span><b>Ansar Zeinulla</b><small>@azeinulla · Batch 2</small></span><em>39</em><em>2 281 000</em><em>inspect-vision</em><em>↑2</em></div>
-                <div><strong>6</strong><i>MA</i><span><b>Madina Altynbek</b><small>@maltynbek · Batch 4</small></span><em>38</em><em>2 104 300</em><em>social-network</em><em>→0</em></div>
-                <div><strong>7</strong><i>DS</i><span><b>Damir Saparov</b><small>@dsaparov · Batch 5</small></span><em>37</em><em>1 985 400</em><em>graphql</em><em>↑1</em></div>
-                <div><strong>8</strong><i>SL</i><span><b>Sofia Lee</b><small>@slee · Batch 1</small></span><em>36</em><em>1 840 200</em><em>real-time-forum</em><em>↓2</em></div>
-                <div><strong>9</strong><i>AB</i><span><b>Aruzhan Bekova</b><small>@abekova · Batch 6</small></span><em>35</em><em>1 722 000</em><em>forum</em><em>↑3</em></div>
-                <div><strong>10</strong><i>TK</i><span><b>Timur Kim</b><small>@tkim · Batch 3</small></span><em>34</em><em>1 610 500</em><em>groupie-tracker</em><em>→0</em></div>
+                <div id="leaderboard-rows" class="leaderboard-rows"></div>
               </div>
             </section>
           </section>
@@ -567,22 +587,22 @@
                 <div><span>⚡</span><strong>Серия 14 дней</strong><small>активность подряд</small></div>
               </div>
               <div class="team-rank">
-                <div><strong>🥷 Network Ninja</strong><span>работал с 30+ разными студентами</span></div>
-                <b>34</b>
-                <i><span style="width: 68%"></span></i>
+                <div class="team-rank-title"><span class="team-rank-emoji">🥷</span><div><strong>Network Ninja</strong><span>работал с 30+ разными студентами</span></div></div>
+                <div class="team-rank-score"><b>34</b><span>человек в команде</span></div>
+                <i><span class="ts-fill" style="width: 68%"></span></i>
                 <p>След. ранг <strong>Teamwork Titan</strong> — поработай с 50 студентами (осталось 16)</p>
               </div>
               <div class="friend-grid">
                 <div>
                   <h4>ЧАЩЕ ВСЕГО РАБОТАЛ С</h4>
-                  <p><i>MA</i><span>Madina Altynbek<small>@maltynbek</small></span><b>9 проектов</b></p>
-                  <p><i>TK</i><span>Timur Kim<small>@tkim</small></span><b>7 проектов</b></p>
-                  <p><i>SL</i><span>Sofia Lee<small>@slee</small></span><b>6 проектов</b></p>
+                  <p><i class="friend-madina">MA</i><span>Madina Altynbek<small>@maltynbek</small></span><b>9 проектов</b></p>
+                  <p><i class="friend-timur">TK</i><span>Timur Kim<small>@tkim</small></span><b>7 проектов</b></p>
+                  <p><i class="friend-sofia">SL</i><span>Sofia Lee<small>@slee</small></span><b>6 проектов</b></p>
                 </div>
                 <div>
                   <h4>НОВЫЕ НАПАРНИКИ</h4>
-                  <p><i>BO</i><span>Bekzat Orynbek<small>@borynbek</small></span><b>на graphql</b></p>
-                  <p><i>AO</i><span>Aigerim Onalbaeva<small>@aonalba</small></span><b>на real-time-forum</b></p>
+                  <p><i class="friend-bekzat">BO</i><span>Bekzat Orynbek<small>@borynbek</small></span><b>на graphql</b></p>
+                  <p><i class="friend-aigerim">AO</i><span>Aigerim Onalbaeva<small>@aonalba</small></span><b>на real-time-forum</b></p>
                   <div class="extra-award"><span>Доп. награды за аудит</span><strong>+148 kB</strong></div>
                 </div>
               </div>
@@ -590,7 +610,10 @@
             <section class="wide-card radar-card" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
               <div class="section-title-row">
                 <h3>Навыки</h3>
-                <span class="segmented"><button type="button" class="active">Топ</button><button type="button">Все</button></span>
+                <span class="segmented public-radar-controls">
+                  <button type="button" class="active" data-public-radar="top">Топ</button>
+                  <button type="button" data-public-radar="all">Все</button>
+                </span>
               </div>
               <div id="public-radar"></div>
             </section>

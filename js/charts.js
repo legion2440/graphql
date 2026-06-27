@@ -322,7 +322,7 @@ export function renderXpByProjectChart(container, projects) {
         width: fillWidth,
         height: 13,
         rx: 7,
-        class: "project-bar-fill",
+        class: "project-bar-fill ts-fill",
         fill: "url(#project-bar-gradient)",
       }),
       createSvgElement(
@@ -668,6 +668,19 @@ export function renderDistributionHistogram(container, count = 50, pop = "all") 
       class: "chart-axis",
     }),
   );
+  svg.append(
+    createSvgElement(
+      "text",
+      {
+        x: 18,
+        y: margin.top + plotHeight / 2,
+        class: "chart-label histogram-y-title",
+        "text-anchor": "middle",
+        transform: `rotate(-90 18 ${margin.top + plotHeight / 2})`,
+      },
+      "студентов",
+    ),
+  );
 
   bins.forEach((value, index) => {
     const barHeight = Math.max(1.5, (plotHeight * value) / max);
@@ -690,7 +703,12 @@ export function renderDistributionHistogram(container, count = 50, pop = "all") 
   svg.append(
     createSvgElement(
       "text",
-      { x: markerX.toFixed(1), y: margin.top + plotHeight - (plotHeight * bins[yourIndex]) / max - 9, class: "chart-label", "text-anchor": "middle" },
+      {
+        x: markerX.toFixed(1),
+        y: margin.top + plotHeight - (plotHeight * bins[yourIndex]) / max - 9,
+        class: "chart-label histogram-marker",
+        "text-anchor": "middle",
+      },
       "твой XP",
     ),
     createSvgElement("text", { x: margin.left, y: height - 12, class: "chart-label", "text-anchor": "start" }, pop === "batch" ? "64 kB" : "0 B"),
