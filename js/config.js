@@ -1,4 +1,4 @@
-export const API_BASE_URL = "https://your-platform-domain.example";
+export const API_BASE_URL = "https://01.tomorrow-school.ai";
 
 export const SIGNIN_URL = `${API_BASE_URL}/api/auth/signin`;
 export const GRAPHQL_URL = `${API_BASE_URL}/api/graphql-engine/v1/graphql`;
