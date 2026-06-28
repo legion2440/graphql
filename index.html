@@ -139,10 +139,10 @@
             <span>→</span> query PROFILE_QUERY { user · audits } <strong>ожидание</strong>
           </div>
           <div id="stage-xp-query" data-stage-state="pending">
-            <span>→</span> query XP_TRANSACTIONS_QUERY ($type) <strong>ожидание</strong>
+            <span>→</span> query XP + PROFILE_DETAILS <strong>ожидание</strong>
           </div>
           <div id="stage-normalization" data-stage-state="pending">
-            <span>→</span> normalize profile + XP data <strong>ожидание</strong>
+            <span>→</span> normalize live profile data <strong>ожидание</strong>
           </div>
           <div id="stage-render" data-stage-state="pending">
             <span>→</span> render dashboard <strong class="cursor">ожидание</strong>
@@ -224,14 +224,14 @@
                   <span id="profile-handle">@—</span>
                   <span>·</span>
                   <span id="profile-user-id">#—</span>
-                  <span class="pill pill-lime" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">Assistant developer</span>
+                  <span id="profile-rank-pill" class="pill pill-lime" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">Assistant developer</span>
                 </div>
               </div>
               <div class="level-wrap" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
                 <div class="level-copy">
                   <span>УРОВЕНЬ</span>
-                  <strong>до LVL 33</strong>
-                  <small>63.1 kB до апа</small>
+                  <strong id="level-next-label">до LVL 33</strong>
+                  <small id="level-next-note">63.1 kB до апа</small>
                 </div>
                 <div id="level-ring" class="level-ring" data-ring-target="58">
                   <div><strong id="level-value" data-count-placeholder="32">32</strong><span>LEVEL</span></div>
@@ -263,26 +263,26 @@
             </section>
 
             <section class="triple-grid">
-              <article class="rank-card ts-card" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
+              <article id="current-rank-card" class="rank-card ts-card" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
                 <div class="card-head">
                   <span class="card-label"><span class="card-icon">🛡</span><span>ТЕКУЩИЙ РАНГ</span></span>
                   <button class="link-button" type="button" data-tab-link="progress">все ранги →</button>
                 </div>
-                <strong>Assistant developer</strong>
+                <strong id="current-rank-value">Assistant developer</strong>
                 <div>
-                  <div class="progress-label"><span>до ранга Basic developer</span><span>8 уровня</span></div>
-                  <div class="mini-progress"><span class="ts-fill" style="width: 58%"></span></div>
+                  <div class="progress-label"><span id="next-rank-label">до ранга Basic developer</span><span id="next-rank-distance">8 уровня</span></div>
+                  <div class="mini-progress"><span id="next-rank-progress" class="ts-fill" style="width: 58%"></span></div>
                 </div>
               </article>
               <article class="compact-card ts-card" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
                 <span class="card-label"><span class="card-icon">⚑</span><span>CHECKPOINT</span></span>
-                <strong>100</strong>
-                <small>контрольный уровень</small>
+                <strong id="checkpoint-value">100</strong>
+                <small id="checkpoint-note">контрольный уровень</small>
               </article>
               <article class="compact-card ts-card" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
                 <span class="card-label"><span class="card-icon">⚙</span><span>ПОСЛЕДНИЙ НАВЫК</span></span>
-                <strong class="last-skill-value cyan-text">AI</strong>
-                <small>недавно прокачан</small>
+                <strong id="last-skill-value" class="last-skill-value cyan-text">AI</strong>
+                <small id="last-skill-note">недавно прокачан</small>
               </article>
             </section>
 
@@ -319,8 +319,8 @@
                 <dl>
                   <div><dt>Логин</dt><dd id="info-login">—</dd></div>
                   <div><dt>ID</dt><dd id="info-id">#—</dd></div>
-                  <div data-placeholder tabindex="0" aria-label="Under construction. Placeholder data."><dt>Кампус</dt><dd>Astana</dd></div>
-                  <div data-placeholder tabindex="0" aria-label="Under construction. Placeholder data."><dt>Когорта</dt><dd>Бассейн #3</dd></div>
+                  <div data-placeholder tabindex="0" aria-label="Under construction. Placeholder data."><dt>Кампус</dt><dd id="profile-campus">Astana</dd></div>
+                  <div data-placeholder tabindex="0" aria-label="Under construction. Placeholder data."><dt>Когорта</dt><dd id="profile-cohort">Бассейн #3</dd></div>
                 </dl>
               </article>
             </section>
@@ -334,13 +334,13 @@
               </div>
               <span>путь по curriculum · Astana</span>
             </div>
-            <div class="warning-strip" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
+            <div id="progress-warning" class="warning-strip" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
               <span>⚠️</span>
               <strong>Твой текущий уровень (32) ниже минимально ожидаемого (42) на этот месяц — стоит ускориться.</strong>
             </div>
             <section class="wide-card" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
               <h3>Лестница рангов</h3>
-              <div class="rank-ladder">
+              <div id="rank-ladder" class="rank-ladder">
                 <div><i class="done"></i><strong>Aspiring developer</strong><span>≥ LVL 0</span><em>пройдено</em></div>
                 <div><i class="done"></i><strong>Beginner developer</strong><span>≥ LVL 10</span><em>пройдено</em></div>
                 <div><i class="done"></i><strong>Apprentice developer</strong><span>≥ LVL 20</span><em>пройдено</em></div>
@@ -352,7 +352,7 @@
             <section class="wide-card forecast-card" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
               <h3>Прогноз по месяцам</h3>
               <p>Минимальные и ожидаемые значения, чтобы не отставать от программы</p>
-              <div class="forecast-table">
+              <div id="forecast-table" class="forecast-table">
                 <div class="forecast-head"><span>МЕТРИКА</span><span>СЕЙЧАС</span><span>ЭТОТ МЕСЯЦ</span><span>СЛЕД. МЕСЯЦ</span></div>
                 <div><span>⬆ Уровень</span><strong>32</strong><span>мин 42 · ожид 54</span><span>мин 45 · ожид 59</span></div>
                 <div><span>⚑ Checkpoint</span><strong class="lime-text">100</strong><span>40</span><span>40</span></div>
@@ -362,7 +362,7 @@
             <section class="wide-card" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
               <div class="section-title-row"><h3>Таймлайн уровней</h3><span>мин · ожид · checkpoint</span></div>
               <p class="muted-copy">«Сейчас» подсвечен — прокрути, чтобы увидеть весь путь</p>
-              <div class="timeline-row">
+              <div id="timeline-row" class="timeline-row">
                 <div><span>Мар 25</span><strong>0</strong><strong>0</strong><strong>0</strong></div>
                 <div><span>Апр 25</span><strong>5</strong><strong>7</strong><strong>0</strong></div>
                 <div><span>Май 25</span><strong>6</strong><strong>10</strong><strong>0</strong></div>
@@ -405,7 +405,7 @@
             <section data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
               <h3 class="subhead">Технические навыки</h3>
               <p class="muted-copy">То, что ты освоил из проектов, пиков и экзаменов</p>
-              <div class="skill-card-grid skill-card-grid-tech">
+              <div id="technical-skill-grid" class="skill-card-grid skill-card-grid-tech">
                 <article class="skill-card ts-card"><div><strong>Elementary programming</strong><span>59/59</span></div><em class="tier-master">Master Hacker ★★★★</em><i class="ts-fill" style="width: 100%"></i></article>
                 <article class="skill-card ts-card"><div><strong>Back-end</strong><span>15/25</span></div><em class="tier-bug">Bug Squasher ★★☆</em><i class="ts-fill" style="width: 60%"></i></article>
                 <article class="skill-card ts-card"><div><strong>Front-end</strong><span>9/20</span></div><em class="tier-bug">Bug Squasher ★★☆</em><i class="ts-fill" style="width: 45%"></i></article>
@@ -421,7 +421,7 @@
             <section data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
               <h3 class="subhead">Технологии</h3>
               <p class="muted-copy">Языки, фреймворки и платформы из проектов</p>
-              <div class="skill-card-grid skill-card-grid-techno">
+              <div id="technology-skill-grid" class="skill-card-grid skill-card-grid-techno">
                 <article class="skill-card ts-card"><div><strong>Go</strong><span>19/22</span></div><em class="tier-script">Script Wizard ★★★</em><i class="ts-fill" style="width: 86%"></i></article>
                 <article class="skill-card ts-card"><div><strong>Git</strong><span>1/1</span></div><em class="tier-bug">Bug Squasher ★★☆</em><i class="ts-fill" style="width: 100%"></i></article>
                 <article class="skill-card ts-card"><div><strong>JavaScript</strong><span>3/7</span></div><em class="tier-bug">Bug Squasher ★★☆</em><i class="ts-fill" style="width: 43%"></i></article>
@@ -485,7 +485,7 @@
               </article>
               <article class="wide-card" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
                 <h3>Разбивка навыков</h3>
-                <div class="breakdown-list">
+                <div id="skill-breakdown" class="breakdown-list">
                   <div><span>Golang</span><i><b class="ts-fill" style="width: 88%"></b></i><strong>88</strong></div>
                   <div><span>JavaScript</span><i><b class="ts-fill" style="width: 78%"></b></i><strong>78</strong></div>
                   <div><span>Rust</span><i><b class="ts-fill" style="width: 54%"></b></i><strong>54</strong></div>
@@ -498,7 +498,7 @@
             <section class="wide-card" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
               <div class="section-title-row">
                 <h3>Ты против потока</h3>
-                <span class="compare-legend">
+                <span id="compare-legend" class="compare-legend">
                   <span><i class="solid"></i>ты · 1.28 MB</span>
                   <span><i class="dashed"></i>средний студент · 540 kB</span>
                 </span>
@@ -530,11 +530,15 @@
                 <p>// СООБЩЕСТВО</p>
                 <h2>Общий рейтинг</h2>
               </div>
-              <span id="board-count-title">все потоки · 22 студентов</span>
+              <span id="board-count-title">все потоки · 507 студентов</span>
             </div>
             <div class="chip-row" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
               <button type="button" class="active" data-board-filter="all">Все</button>
               <button type="button" data-board-filter="Batch 1">Batch 1</button>
+              <button type="button" data-board-filter="Batch 10">Batch 10</button>
+              <button type="button" data-board-filter="Batch 11">Batch 11</button>
+              <button type="button" data-board-filter="Batch 12">Batch 12</button>
+              <button type="button" data-board-filter="Batch 13">Batch 13</button>
               <button type="button" data-board-filter="Batch 2">Batch 2</button>
               <button type="button" data-board-filter="Batch 3">Batch 3</button>
               <button type="button" data-board-filter="Batch 4">Batch 4</button>
@@ -545,7 +549,7 @@
               <button type="button" data-board-filter="Batch 9">Batch 9</button>
               <button type="button" data-board-filter="Staff">Staff</button>
             </div>
-            <div id="board-count-note" class="board-note" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">Сортировка по XP · показано: 22</div>
+            <div id="board-count-note" class="board-note" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">Статичный snapshot dashboard · показано: 507</div>
             <section class="leaderboard-card" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
               <div class="leaderboard-table">
                 <div class="leader-head"><span>РАНГ</span><span></span><span>СТУДЕНТ</span><span>УР.</span><span>XP</span><span>ПРОЕКТ</span><span>ТРЕНД</span></div>
@@ -570,29 +574,29 @@
               <div id="public-avatar" class="avatar avatar-large">—</div>
               <div class="public-main">
                 <h1 id="public-name">—</h1>
-                <div><span id="public-handle">@—</span><span data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">· Batch 3 · Astana</span></div>
-                <p data-placeholder tabindex="0" aria-label="Under construction. Placeholder data."><i></i>Доступен для команды</p>
+                <div><span id="public-handle">@—</span><span id="public-meta" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">· Batch 3 · Astana</span></div>
+                <p id="public-availability" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data."><i></i>Доступен для команды</p>
               </div>
               <div class="public-stats">
-                <div data-placeholder tabindex="0" aria-label="Under construction. Placeholder data."><strong>32</strong><span>уровень</span></div>
+                <div data-placeholder tabindex="0" aria-label="Under construction. Placeholder data."><strong id="public-level">32</strong><span>уровень</span></div>
                 <div><strong id="public-total-xp">0 B</strong><span>всего XP</span></div>
                 <div><strong id="public-audit-ratio" class="lime-text">0</strong><span>audit ratio</span></div>
               </div>
             </section>
             <section class="wide-card" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
               <div class="section-title-row"><h3>Командная работа</h3><span>по совместным проектам и аудитам</span></div>
-              <div class="team-tags">
+              <div id="team-tags" class="team-tags">
                 <div><span>🤝</span><strong>Командный игрок</strong><small>22 совместных проекта</small></div>
                 <div><span>⚖️</span><strong>Честный аудитор</strong><small>48 проведённых аудитов</small></div>
                 <div><span>⚡</span><strong>Серия 14 дней</strong><small>активность подряд</small></div>
               </div>
-              <div class="team-rank">
+              <div id="team-rank" class="team-rank">
                 <div class="team-rank-title"><span class="team-rank-emoji">🥷</span><div><strong>Network Ninja</strong><span>работал с 30+ разными студентами</span></div></div>
                 <div class="team-rank-score"><b>34</b><span>человек в команде</span></div>
                 <i><span class="ts-fill" style="width: 68%"></span></i>
                 <p>След. ранг <strong>Teamwork Titan</strong> — поработай с 50 студентами (осталось 16)</p>
               </div>
-              <div class="friend-grid">
+              <div id="friend-grid" class="friend-grid">
                 <div>
                   <h4>ЧАЩЕ ВСЕГО РАБОТАЛ С</h4>
                   <p><i class="friend-madina">MA</i><span>Madina Altynbek<small>@maltynbek</small></span><b>9 проектов</b></p>
@@ -622,6 +626,6 @@
       </section>
     </div>
 
-    <script type="module" src="js/app.js"></script>
+    <script type="module" src="js/app.js?v=20260628-live-data3"></script>
   </body>
 </html>

@@ -1,3 +1,5 @@
+import { CURRICULUM_SNAPSHOT } from "./curriculum-snapshot.js?v=20260628-live-data3";
+
 export function toFiniteNumber(value, fallback = 0) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
@@ -103,12 +105,177 @@ export function normalizeUser(rawUser) {
     throw new Error("The profile query returned no authenticated user.");
   }
 
+  const firstName = typeof user.firstName === "string" ? user.firstName.trim() : "";
+  const lastName = typeof user.lastName === "string" ? user.lastName.trim() : "";
+  const fullName = [firstName, lastName].filter(Boolean).join(" ");
+
   return {
     id: user.id ?? "—",
     login: typeof user.login === "string" && user.login.trim() ? user.login : "Unknown",
+    firstName,
+    lastName,
+    fullName,
+    campus: typeof user.campus === "string" && user.campus.trim() ? user.campus : "astanahub",
     auditRatio: toFiniteNumber(user.auditRatio),
     totalUp: toFiniteNumber(user.totalUp),
     totalDown: toFiniteNumber(user.totalDown),
+  };
+}
+
+function normalizeArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function normalizeObjectRecord(object) {
+  if (!object || typeof object !== "object") {
+    return null;
+  }
+  const attrs = object.attrs && typeof object.attrs === "object" ? object.attrs : {};
+
+  return {
+    id: object.id ?? null,
+    name: typeof object.name === "string" ? object.name : "",
+    type: typeof object.type === "string" ? object.type : "",
+    path:
+      typeof object.path === "string"
+        ? object.path
+        : typeof attrs.path === "string"
+          ? attrs.path
+          : "",
+    attrs,
+  };
+}
+
+function normalizeProgressRows(rows) {
+  return normalizeArray(rows).map((row, sourceIndex) => ({
+    id: row?.id ?? null,
+    userId: row?.userId ?? null,
+    eventId: row?.eventId ?? null,
+    objectId: row?.objectId ?? null,
+    path: typeof row?.path === "string" ? row.path : "",
+    grade: row?.grade === null || row?.grade === undefined ? null : toFiniteNumber(row.grade, null),
+    isDone: Boolean(row?.isDone),
+    createdAt: row?.createdAt ?? null,
+    updatedAt: row?.updatedAt ?? null,
+    createdDate: parseValidDate(row?.createdAt),
+    updatedDate: parseValidDate(row?.updatedAt),
+    object: normalizeObjectRecord(row?.object),
+    sourceIndex,
+  }));
+}
+
+function normalizeGroupRows(rows) {
+  return normalizeArray(rows).map((row, sourceIndex) => ({
+    id: row?.id ?? null,
+    userId: row?.userId ?? null,
+    userLogin: typeof row?.userLogin === "string" ? row.userLogin : "",
+    userLevel: toFiniteNumber(row?.userLevel),
+    groupId: row?.groupId ?? null,
+    eventId: row?.eventId ?? null,
+    path: typeof row?.path === "string" ? row.path : "",
+    accepted: row?.accepted ?? null,
+    enrollmentStatus: typeof row?.enrollmentStatus === "string" ? row.enrollmentStatus : "",
+    createdAt: row?.createdAt ?? null,
+    updatedAt: row?.updatedAt ?? null,
+    createdDate: parseValidDate(row?.createdAt),
+    updatedDate: parseValidDate(row?.updatedAt),
+    group:
+      row?.group && typeof row.group === "object"
+        ? {
+            id: row.group.id ?? null,
+            status: typeof row.group.status === "string" ? row.group.status : "",
+            createdAt: row.group.createdAt ?? null,
+            updatedAt: row.group.updatedAt ?? null,
+            captainId: row.group.captainId ?? null,
+            object: normalizeObjectRecord(row.group.object),
+          }
+        : null,
+    sourceIndex,
+  }));
+}
+
+function aggregateSum(payload) {
+  return toFiniteNumber(payload?.aggregate?.sum?.amount);
+}
+
+function aggregateCount(payload) {
+  return toFiniteNumber(payload?.aggregate?.count);
+}
+
+export function normalizeProfileDetails(rawDetails = {}) {
+  const eventUser = normalizeArray(rawDetails.event_user)[0] ?? null;
+  const labels = normalizeArray(rawDetails.label_user).map((label) => ({
+    id: label?.id ?? null,
+    userId: label?.userId ?? null,
+    eventId: label?.eventId ?? null,
+    labelId: label?.labelId ?? null,
+    labelName: typeof label?.labelName === "string" ? label.labelName : "",
+    createdAt: label?.createdAt ?? null,
+  }));
+  const curriculumObjects = normalizeArray(rawDetails.curriculumObjects).map(normalizeObjectRecord).filter(Boolean);
+
+  return {
+    eventUser: eventUser
+      ? {
+          id: eventUser.id ?? null,
+          userId: eventUser.userId ?? null,
+          eventId: eventUser.eventId ?? null,
+          login: typeof eventUser.userLogin === "string" ? eventUser.userLogin : "",
+          name: typeof eventUser.userName === "string" ? eventUser.userName.trim() : "",
+          level: toFiniteNumber(eventUser.level),
+          auditRatio: toFiniteNumber(eventUser.userAuditRatio),
+          createdAt: eventUser.createdAt ?? null,
+          xp:
+            eventUser.xp && typeof eventUser.xp === "object"
+              ? {
+                  amount: toFiniteNumber(eventUser.xp.amount),
+                  originEventId: eventUser.xp.originEventId ?? null,
+                  path: typeof eventUser.xp.path === "string" ? eventUser.xp.path : "",
+                }
+              : null,
+        }
+      : null,
+    labels,
+    eventXpTotal: aggregateSum(rawDetails.eventXp),
+    eventXpCount: aggregateCount(rawDetails.eventXp),
+    allXpTotal: aggregateSum(rawDetails.allXp),
+    allXpCount: aggregateCount(rawDetails.allXp),
+    progress: normalizeProgressRows(rawDetails.progress),
+    allDoneProgress: normalizeProgressRows(rawDetails.allDoneProgress),
+    groups: normalizeGroupRows(rawDetails.group_user),
+    events: normalizeArray(rawDetails.events).map((eventUserRow) => ({
+      id: eventUserRow?.id ?? null,
+      eventId: eventUserRow?.eventId ?? null,
+      level: toFiniteNumber(eventUserRow?.level),
+      createdAt: eventUserRow?.createdAt ?? null,
+      event:
+        eventUserRow?.event && typeof eventUserRow.event === "object"
+          ? {
+              id: eventUserRow.event.id ?? null,
+              path: typeof eventUserRow.event.path === "string" ? eventUserRow.event.path : "",
+              createdAt: eventUserRow.event.createdAt ?? null,
+              startAt: eventUserRow.event.startAt ?? null,
+              endAt: eventUserRow.event.endAt ?? null,
+              object: normalizeObjectRecord(eventUserRow.event.object),
+            }
+          : null,
+    })),
+    auditCount: aggregateCount(rawDetails.auditsAsAuditor),
+    recentAudits: normalizeArray(rawDetails.recentAuditsAsAuditor).map((audit) => ({
+      id: audit?.id ?? null,
+      auditorId: audit?.auditorId ?? null,
+      groupId: audit?.groupId ?? null,
+      grade: audit?.grade === null || audit?.grade === undefined ? null : toFiniteNumber(audit.grade, null),
+      closureType: typeof audit?.closureType === "string" ? audit.closureType : "",
+      createdAt: audit?.createdAt ?? null,
+      updatedAt: audit?.updatedAt ?? null,
+    })),
+    records: normalizeArray(rawDetails.record_public_view).map((record) => ({
+      userId: record?.userId ?? null,
+      startAt: record?.startAt ?? null,
+      endAt: record?.endAt ?? null,
+    })),
+    curriculumObjects,
   };
 }
 
@@ -270,6 +437,13 @@ export function getFirstName(login) {
   return first.charAt(0).toUpperCase() + first.slice(1);
 }
 
+export function getDisplayFirstName(user) {
+  if (typeof user?.firstName === "string" && user.firstName.trim()) {
+    return user.firstName.trim();
+  }
+  return getFirstName(user?.login);
+}
+
 export function calculateAuditPercentages(totalUp, totalDown) {
   const up = Math.max(0, toFiniteNumber(totalUp));
   const down = Math.max(0, toFiniteNumber(totalDown));
@@ -395,5 +569,472 @@ export function buildActivityHeatmapData(transactions) {
       validDates.length > 0
         ? `${formatDate(actualStart)} — ${formatDate(actualEnd)}`
         : "No XP dates",
+  };
+}
+
+export const SKILL_LABELS = Object.freeze({
+  prog: "Elementary programming",
+  "back-end": "Back-end",
+  "front-end": "Front-end",
+  algo: "Elementary algorithms",
+  ai: "AI",
+  tcp: "TCP/IP",
+  stats: "Statistics",
+  game: "Game programming",
+  "sys-admin": "System administration",
+  blockchain: "Blockchain",
+  mobile: "Mobile development",
+  cybersecurity: "Cybersecurity",
+  ux: "UX/UI",
+  cv: "Computer Vision",
+  ml: "Machine Learning",
+  llm: "Large Language Models",
+  rag: "Retrieval-Augmented Generation",
+  nlp: "Natural Language Processing",
+  mlops: "MLOps",
+  math: "Mathematics",
+  genetic: "Genetic Algorithms",
+  go: "Go",
+  git: "Git",
+  js: "JavaScript",
+  html: "HTML",
+  sql: "SQL",
+  css: "CSS",
+  unix: "Unix",
+  docker: "Docker",
+  rust: "Rust",
+  java: "Java",
+  "non-relational-db": "Non-relational Databases",
+  c: "C",
+  sh: "Shell",
+  php: "PHP",
+  python: "Python",
+  ruby: "Ruby",
+  "c++": "C++",
+  graphql: "GraphQL",
+  "ruby-on-rails": "Ruby on Rails",
+  laravel: "Laravel",
+  django: "Django",
+});
+
+const TECHNICAL_SKILL_KEYS = [
+  "prog",
+  "back-end",
+  "front-end",
+  "algo",
+  "ai",
+  "tcp",
+  "stats",
+  "game",
+  "sys-admin",
+  "blockchain",
+  "mobile",
+  "cybersecurity",
+  "ux",
+  "cv",
+  "ml",
+  "llm",
+  "rag",
+  "nlp",
+  "mlops",
+  "math",
+  "genetic",
+];
+
+const TECHNOLOGY_SKILL_KEYS = [
+  "go",
+  "git",
+  "js",
+  "html",
+  "sql",
+  "css",
+  "unix",
+  "docker",
+  "rust",
+  "java",
+  "non-relational-db",
+  "c",
+  "sh",
+  "php",
+  "python",
+  "ruby",
+  "c++",
+  "graphql",
+  "ruby-on-rails",
+  "laravel",
+  "django",
+];
+
+function isPlainObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function getObjectNameFromPath(path) {
+  const segments = String(path || "").split("/").filter(Boolean);
+  return segments.at(-1) || "project";
+}
+
+function objectKeySet(row) {
+  const keys = new Set();
+  if (row?.objectId !== null && row?.objectId !== undefined) {
+    keys.add(`id:${row.objectId}`);
+  }
+  if (row?.object?.id !== null && row?.object?.id !== undefined) {
+    keys.add(`id:${row.object.id}`);
+  }
+  if (typeof row?.path === "string" && row.path.trim()) {
+    keys.add(`path:${row.path}`);
+  }
+  if (typeof row?.object?.path === "string" && row.object.path.trim()) {
+    keys.add(`path:${row.object.path}`);
+  }
+  return keys;
+}
+
+function mergeObjectRecords(objects) {
+  const records = new Map();
+
+  for (const object of objects) {
+    if (!object) {
+      continue;
+    }
+
+    const keys = [...objectKeySet({ objectId: object.id, path: object.path, object })];
+    const fallbackKey = object.name ? `name:${object.name}:${object.type}` : null;
+    const key = keys[0] ?? fallbackKey;
+
+    if (!key) {
+      continue;
+    }
+
+    const existing = records.get(key);
+    if (existing) {
+      records.set(key, {
+        ...existing,
+        name: existing.name || object.name,
+        type: existing.type || object.type,
+        path: existing.path || object.path,
+        attrs: {
+          ...(existing.attrs || {}),
+          ...(object.attrs || {}),
+        },
+      });
+      continue;
+    }
+
+    records.set(key, object);
+  }
+
+  return [...records.values()];
+}
+
+function mergeProgressRows(rows) {
+  const records = new Map();
+
+  for (const row of rows) {
+    if (!row) {
+      continue;
+    }
+
+    const keys = [...objectKeySet(row)];
+    const key = keys[0] ?? `row:${records.size}`;
+    if (!records.has(key)) {
+      records.set(key, row);
+    }
+  }
+
+  return [...records.values()];
+}
+
+function findMatchingObject(row, objects) {
+  const rowKeys = objectKeySet(row);
+
+  return objects.find((object) => {
+    const objectKeys = objectKeySet({ objectId: object.id, path: object.path, object });
+    return [...objectKeys].some((key) => rowKeys.has(key));
+  }) ?? null;
+}
+
+function getBaseSkillsForProgress(row, objects) {
+  const directBaseSkills = row?.object?.attrs?.baseSkills;
+  if (isPlainObject(directBaseSkills)) {
+    return directBaseSkills;
+  }
+
+  const matchedBaseSkills = findMatchingObject(row, objects)?.attrs?.baseSkills;
+  return isPlainObject(matchedBaseSkills) ? matchedBaseSkills : null;
+}
+
+function findModuleObject(objects, campus = "astanahub") {
+  const campusPrefix = `/${String(campus || "astanahub").toLowerCase()}/`;
+  const modules = objects.filter((object) =>
+    Array.isArray(object?.attrs?.timeline) &&
+    Array.isArray(object?.attrs?.ranksDefinitions) &&
+    Array.isArray(object?.attrs?.levelsDefinitions),
+  );
+
+  return (
+    modules.find((object) => object.path.toLowerCase().startsWith(campusPrefix)) ??
+    modules[0] ??
+    objects.find((object) => object.path.toLowerCase().endsWith("/module")) ??
+    null
+  );
+}
+
+function monthFromProgramStart(eventStartAt, monthIndex) {
+  const start = parseValidDate(eventStartAt) ?? new Date();
+  const date = new Date(start.getFullYear(), start.getMonth() + Number(monthIndex || 1) - 1, 1);
+  return new Intl.DateTimeFormat("ru", { month: "short", year: "2-digit" })
+    .format(date)
+    .replace(".", "");
+}
+
+function getRankDefinitions(moduleObject) {
+  const definitions = moduleObject?.attrs?.ranksDefinitions;
+  return Array.isArray(definitions)
+    ? definitions
+        .map((rank) => ({
+          name: typeof rank?.name === "string" ? rank.name : "Rank",
+          level: toFiniteNumber(rank?.level),
+          milestone: typeof rank?.milestone === "string" ? rank.milestone : "",
+        }))
+        .sort((left, right) => left.level - right.level)
+    : [];
+}
+
+function getLevelDefinitions(moduleObject) {
+  const definitions = moduleObject?.attrs?.levelsDefinitions;
+  return Array.isArray(definitions)
+    ? definitions
+        .map((level) => ({
+          level: toFiniteNumber(level?.level),
+          requirements: isPlainObject(level?.requirements) ? level.requirements : {},
+        }))
+        .sort((left, right) => left.level - right.level)
+    : [];
+}
+
+function getTimelineRows(moduleObject, eventStartAt, currentLevel) {
+  const timeline = moduleObject?.attrs?.timeline;
+  if (!Array.isArray(timeline)) {
+    return [];
+  }
+
+  return timeline.map((row) => ({
+    month: toFiniteNumber(row?.month),
+    label: monthFromProgramStart(eventStartAt, row?.month),
+    minLevel: toFiniteNumber(row?.minLevel),
+    expectedLevel: toFiniteNumber(row?.expectedLevel),
+    checkpointLevel: toFiniteNumber(row?.checkpointLevel),
+    rank: typeof row?.rank === "string" ? row.rank : "",
+    notes: typeof row?.notes === "string" ? row.notes : "",
+    isCurrent:
+      toFiniteNumber(row?.minLevel) <= currentLevel &&
+      currentLevel < toFiniteNumber(row?.expectedLevel, Number.POSITIVE_INFINITY),
+  }));
+}
+
+function getCurrentTimelineRow(timelineRows, now = new Date()) {
+  if (timelineRows.length === 0) {
+    return null;
+  }
+
+  const current = timelineRows.find((row) => row.isCurrent);
+  if (current) {
+    return current;
+  }
+
+  const monthIndex = now.getMonth();
+  return timelineRows[Math.min(timelineRows.length - 1, Math.max(0, monthIndex))] ?? timelineRows.at(-1);
+}
+
+function getSkillTier(completed, total) {
+  if (completed <= 0 || total <= 0) {
+    return { label: "нет прогресса", className: "tier-none", stars: "" };
+  }
+
+  const percent = (completed / total) * 100;
+  if (percent >= 60) {
+    return { label: "Master Hacker", className: "tier-master", stars: "★★★★" };
+  }
+  if (percent >= 35) {
+    return { label: "Script Wizard", className: "tier-script", stars: "★★★" };
+  }
+  if (percent >= 10) {
+    return { label: "Bug Squasher", className: "tier-bug", stars: "★★☆" };
+  }
+  return { label: "Code Explorer", className: "tier-code", stars: "★☆☆" };
+}
+
+function buildSkillStats(objects, completedProgress) {
+  const completedKeys = new Set();
+  for (const row of completedProgress) {
+    for (const key of objectKeySet(row)) {
+      completedKeys.add(key);
+    }
+  }
+
+  const stats = new Map();
+  for (const object of objects) {
+    const baseSkills = object?.attrs?.baseSkills;
+    if (!isPlainObject(baseSkills)) {
+      continue;
+    }
+
+    const objectKeys = objectKeySet({ objectId: object.id, path: object.path });
+    const isCompleted = [...objectKeys].some((key) => completedKeys.has(key));
+
+    for (const key of Object.keys(baseSkills)) {
+      if (!stats.has(key)) {
+        stats.set(key, {
+          key,
+          label: SKILL_LABELS[key] || key,
+          completed: 0,
+          total: 0,
+          value: 0,
+          group: TECHNICAL_SKILL_KEYS.includes(key) ? "technical" : "technology",
+        });
+      }
+
+      const entry = stats.get(key);
+      entry.total += 1;
+      if (isCompleted) {
+        entry.completed += 1;
+      }
+    }
+  }
+
+  return [...stats.values()]
+    .map((entry) => {
+      const percent = entry.total > 0 ? Math.round((entry.completed / entry.total) * 100) : 0;
+      const tier = getSkillTier(entry.completed, entry.total);
+      return {
+        ...entry,
+        value: percent,
+        tier,
+      };
+    })
+    .sort((left, right) => right.value - left.value || right.completed - left.completed || left.label.localeCompare(right.label));
+}
+
+function pickSkills(stats, keys, minimumItems = 10) {
+  const keyed = keys
+    .map((key) => stats.find((skill) => skill.key === key))
+    .filter(Boolean);
+  const extra = stats.filter((skill) => !keys.includes(skill.key));
+  return [...keyed, ...extra].slice(0, minimumItems);
+}
+
+function getBestFriend(groups, currentUserId) {
+  const partnerCounts = new Map();
+
+  for (const groupRow of groups) {
+    const captainId = groupRow?.group?.captainId;
+    if (captainId && captainId !== currentUserId) {
+      partnerCounts.set(captainId, (partnerCounts.get(captainId) || 0) + 1);
+    }
+  }
+
+  const [id, count] =
+    [...partnerCounts.entries()].sort((left, right) => right[1] - left[1])[0] ?? [];
+  return id ? { id, count } : null;
+}
+
+export function deriveProfileInsights(user, details, transactions) {
+  const progressObjects = [
+    ...(details?.progress ?? []).map((row) => row.object),
+    ...(details?.allDoneProgress ?? []).map((row) => row.object),
+    ...(details?.groups ?? []).map((row) => row.group?.object),
+    ...(details?.events ?? []).map((row) => row.event?.object),
+  ];
+  const objects = mergeObjectRecords([
+    ...(details?.curriculumObjects ?? []),
+    ...progressObjects,
+    ...CURRICULUM_SNAPSHOT,
+  ]);
+  const moduleObject = findModuleObject(objects, user?.campus);
+  const level = toFiniteNumber(details?.eventUser?.level, 0);
+  const ranks = getRankDefinitions(moduleObject);
+  const levels = getLevelDefinitions(moduleObject);
+  const currentRank =
+    [...ranks].reverse().find((rank) => rank.level <= level) ??
+    ranks[0] ?? { name: "Rank unavailable", level: 0, milestone: "" };
+  const nextRank = ranks.find((rank) => rank.level > level) ?? null;
+  const rankProgress = nextRank
+    ? Math.round(((level - currentRank.level) / Math.max(1, nextRank.level - currentRank.level)) * 100)
+    : 100;
+  const timelineRows = getTimelineRows(moduleObject, details?.eventUser?.createdAt, level);
+  const timelineCurrent = getCurrentTimelineRow(timelineRows);
+  const isBehindTimeline = timelineCurrent ? level < timelineCurrent.minLevel : false;
+  const batch = details?.labels?.find((label) => /^Batch\s+/i.test(label.labelName))?.labelName ?? "Batch unavailable";
+  const doneProgress = details?.progress?.filter((row) => row.isDone) ?? [];
+  const allDoneProgress = details?.allDoneProgress ?? [];
+  const recentDoneProgress = doneProgress.filter((row) => {
+    const time = row.updatedDate?.getTime();
+    if (!Number.isFinite(time)) {
+      return false;
+    }
+    return Date.now() - time <= 7 * 24 * 60 * 60 * 1000;
+  });
+  const latestProgress = details?.progress?.[0] ?? null;
+  const completedProgressForSkills = mergeProgressRows([...allDoneProgress, ...doneProgress]);
+  const latestCompleted = allDoneProgress[0] ?? doneProgress[0] ?? null;
+  const latestBaseSkills = getBaseSkillsForProgress(latestCompleted, objects);
+  const latestSkillKey = isPlainObject(latestBaseSkills)
+    ? Object.entries(latestBaseSkills).sort((left, right) => toFiniteNumber(right[1]) - toFiniteNumber(left[1]))[0]?.[0]
+    : null;
+  const skillStats = buildSkillStats(objects, completedProgressForSkills);
+  const technicalSkills = pickSkills(skillStats.filter((skill) => skill.group === "technical"), TECHNICAL_SKILL_KEYS, 10);
+  const technologySkills = pickSkills(skillStats.filter((skill) => skill.group === "technology"), TECHNOLOGY_SKILL_KEYS, 10);
+  const activeGroups = (details?.groups ?? []).filter((group) =>
+    ["working", "setup"].includes(group?.group?.status),
+  );
+  const uniqueGroupIds = new Set((details?.groups ?? []).map((group) => group.groupId).filter(Boolean));
+  const uniqueProjectPartners = new Set(
+    (details?.groups ?? [])
+      .map((group) => group?.group?.captainId)
+      .filter((captainId) => captainId && captainId !== user.id),
+  );
+  const bestFriend = getBestFriend(details?.groups ?? [], user.id);
+
+  return {
+    eventId: details?.eventUser?.eventId ?? null,
+    eventUser: details?.eventUser ?? null,
+    eventXpTotal: details?.eventXpTotal ?? calculateTotalXp(transactions),
+    allXpTotal: details?.allXpTotal ?? calculateTotalXp(transactions),
+    eventXpCount: details?.eventXpCount ?? transactions.length,
+    allXpCount: details?.allXpCount ?? transactions.length,
+    level,
+    batch,
+    campus: user?.campus || "astanahub",
+    ranks,
+    levels,
+    currentRank,
+    nextRank,
+    rankProgress: Math.max(0, Math.min(100, rankProgress)),
+    timelineRows,
+    timelineCurrent,
+    isBehindTimeline,
+    doneProgressCount: doneProgress.length,
+    recentDoneProgressCount: recentDoneProgress.length,
+    latestProgress,
+    latestCompleted,
+    latestSkill:
+      latestSkillKey && (SKILL_LABELS[latestSkillKey] || latestSkillKey)
+        ? SKILL_LABELS[latestSkillKey] || latestSkillKey
+        : "—",
+    technicalSkills,
+    technologySkills,
+    topSkills: [...technicalSkills, ...technologySkills].sort(
+      (left, right) => right.value - left.value || right.completed - left.completed,
+    ),
+    activeGroups,
+    uniqueProjectCount: uniqueGroupIds.size,
+    uniquePartnerCount: uniqueProjectPartners.size,
+    bestFriend,
+    auditCount: details?.auditCount ?? 0,
+    recentAudits: details?.recentAudits ?? [],
+    eventHistory: details?.events ?? [],
+    records: details?.records ?? [],
   };
 }

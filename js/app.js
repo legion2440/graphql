@@ -1,11 +1,12 @@
 import { clearToken, getToken, logout, signIn, storeToken } from "./auth.js";
-import { normalizeTransactions, normalizeUser } from "./data.js";
+import { normalizeProfileDetails, normalizeTransactions, normalizeUser } from "./data.js?v=20260628-live-data3";
 import { graphqlRequest } from "./graphql.js";
 import {
+  PROFILE_DETAILS_QUERY,
   PROFILE_QUERY,
   XP_TRANSACTIONS_QUERY,
   XP_TRANSACTIONS_VARIABLES,
-} from "./queries.js";
+} from "./queries.js?v=20260628-live-data3";
 import { initTheme } from "./theme.js";
 import { initUnderConstruction } from "./under-construction.js";
 import {
@@ -18,12 +19,13 @@ import {
   setLoginLoading,
   setView,
   updateLoadingStage,
-} from "./ui.js";
+} from "./ui.js?v=20260628-live-data3";
 
 const state = {
   isBusy: false,
   user: null,
   transactions: [],
+  details: null,
   activeStage: null,
 };
 
@@ -62,6 +64,7 @@ function showLogin(message = "") {
 function resetAuthenticatedState() {
   state.user = null;
   state.transactions = [];
+  state.details = null;
   state.activeStage = null;
   resetDashboard();
 }
@@ -74,19 +77,29 @@ async function loadAuthenticatedProfile({ restoredSession = false, resetStages =
 
   markStage("profileQuery", "active", "запрос");
   const profileData = await graphqlRequest(PROFILE_QUERY);
+  state.user = normalizeUser(profileData.user);
   markStage("profileQuery", "done", "успешно");
 
   markStage("xpQuery", "active", "запрос");
-  const xpData = await graphqlRequest(XP_TRANSACTIONS_QUERY, XP_TRANSACTIONS_VARIABLES);
+  const userId = Number(state.user.id);
+  const xpData = await graphqlRequest(XP_TRANSACTIONS_QUERY, {
+    ...XP_TRANSACTIONS_VARIABLES,
+    userId,
+  });
+  const detailsData = await graphqlRequest(PROFILE_DETAILS_QUERY, {
+    userId,
+    eventId: XP_TRANSACTIONS_VARIABLES.eventId,
+    type: XP_TRANSACTIONS_VARIABLES.type,
+  });
   markStage("xpQuery", "done", "успешно");
 
   markStage("normalization", "active", "обработка");
-  state.user = normalizeUser(profileData.user);
   state.transactions = normalizeTransactions(xpData.transaction);
+  state.details = normalizeProfileDetails(detailsData);
   markStage("normalization", "done", "готово");
 
   markStage("render", "active", "отрисовка");
-  renderDashboard(state.user, state.transactions);
+  renderDashboard(state.user, state.transactions, state.details);
   markStage("render", "done", "готово");
   state.activeStage = null;
   setView("dashboard");

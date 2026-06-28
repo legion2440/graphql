@@ -534,14 +534,23 @@ export function renderRadarChart(container, axes, title = "Skills radar chart") 
   container.append(svg);
 }
 
-export function renderCompareChart(container) {
-  const months = ["Сен", "Окт", "Ноя", "Дек", "Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт"];
-  const you = [40, 96, 165, 250, 322, 410, 520, 642, 760, 883, 1001, 1122, 1210, 1284];
-  const cohort = [20, 48, 82, 120, 150, 188, 230, 280, 320, 360, 410, 455, 500, 540];
-  renderDualLineChart(container, you, cohort, months);
+export function renderCompareChart(container, data = {}) {
+  const months =
+    Array.isArray(data.months) && data.months.length > 0
+      ? data.months
+      : ["Сен", "Окт", "Ноя", "Дек", "Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт"];
+  const you =
+    Array.isArray(data.you) && data.you.length > 0
+      ? data.you
+      : [40, 96, 165, 250, 322, 410, 520, 642, 760, 883, 1001, 1122, 1210, 1284];
+  const cohort =
+    Array.isArray(data.cohort) && data.cohort.length > 0
+      ? data.cohort
+      : [20, 48, 82, 120, 150, 188, 230, 280, 320, 360, 410, 455, 500, 540];
+  renderDualLineChart(container, you, cohort, months, data.title);
 }
 
-function renderDualLineChart(container, you, cohort, months) {
+function renderDualLineChart(container, you, cohort, months, title = "You versus snapshot cohort comparison") {
   container.replaceChildren();
   const width = 860;
   const height = 320;
@@ -560,10 +569,10 @@ function renderDualLineChart(container, you, cohort, months) {
     viewBox: `0 0 ${width} ${height}`,
     width: "100%",
     role: "img",
-    "aria-label": "Placeholder cohort comparison line chart",
+    "aria-label": title,
   });
 
-  appendTitle(svg, "You versus cohort placeholder comparison");
+  appendTitle(svg, title);
   appendLinearGradient(
     svg,
     "compare-area-gradient",
@@ -624,10 +633,11 @@ function renderDualLineChart(container, you, cohort, months) {
   container.append(svg);
 }
 
-export function renderDistributionHistogram(container, count = 50, pop = "all") {
+export function renderDistributionHistogram(container, count = 50, pop = "all", snapshot = {}) {
   container.replaceChildren();
 
-  const bins = generateBins(count, pop);
+  const values = Array.isArray(snapshot.values) ? snapshot.values.filter(Number.isFinite) : [];
+  const bins = values.length > 0 ? generateSnapshotBins(values, count) : generateBins(count, pop);
   const width = 860;
   const height = 300;
   const margin = { left: 50, right: 14, top: 16, bottom: 40 };
@@ -635,15 +645,20 @@ export function renderDistributionHistogram(container, count = 50, pop = "all") 
   const plotHeight = height - margin.top - margin.bottom;
   const max = Math.max(1, ...bins);
   const barWidth = plotWidth / bins.length;
-  const yourIndex = Math.min(bins.length - 1, Math.max(0, Math.round(bins.length * 0.68)));
+  const domainMax = Math.max(1, ...(values.length > 0 ? values : bins));
+  const markerValue = Number.isFinite(snapshot.markerValue) ? snapshot.markerValue : null;
+  const yourIndex =
+    markerValue !== null && values.length > 0
+      ? Math.min(bins.length - 1, Math.max(0, Math.floor((markerValue / domainMax) * bins.length)))
+      : Math.min(bins.length - 1, Math.max(0, Math.round(bins.length * 0.68)));
   const svg = createSvgElement("svg", {
     viewBox: `0 0 ${width} ${height}`,
     width: "100%",
     role: "img",
-    "aria-label": "Placeholder XP distribution histogram",
+    "aria-label": "XP distribution histogram from snapshot data",
   });
 
-  appendTitle(svg, "Placeholder student XP distribution");
+  appendTitle(svg, "Student XP distribution snapshot");
 
   for (let index = 0; index <= 4; index += 1) {
     const ratio = index / 4;
@@ -711,12 +726,29 @@ export function renderDistributionHistogram(container, count = 50, pop = "all") 
       },
       "твой XP",
     ),
-    createSvgElement("text", { x: margin.left, y: height - 12, class: "chart-label", "text-anchor": "start" }, pop === "batch" ? "64 kB" : "0 B"),
-    createSvgElement("text", { x: width - margin.right, y: height - 12, class: "chart-label", "text-anchor": "end" }, pop === "batch" ? "2.69 MB" : "4.47 MB"),
+    createSvgElement("text", { x: margin.left, y: height - 12, class: "chart-label", "text-anchor": "start" }, "0 B"),
+    createSvgElement(
+      "text",
+      { x: width - margin.right, y: height - 12, class: "chart-label", "text-anchor": "end" },
+      formatXp(domainMax),
+    ),
     createSvgElement("text", { x: (margin.left + width - margin.right) / 2, y: height - 12, class: "chart-label", "text-anchor": "middle" }, "XP →"),
   );
 
   container.append(svg);
+}
+
+function generateSnapshotBins(values, count) {
+  const binCount = Math.max(1, Number.isFinite(count) ? Math.round(count) : 50);
+  const maximum = Math.max(1, ...values);
+  const bins = Array.from({ length: binCount }, () => 0);
+
+  for (const value of values) {
+    const index = Math.min(binCount - 1, Math.max(0, Math.floor((Math.max(0, value) / maximum) * binCount)));
+    bins[index] += 1;
+  }
+
+  return bins;
 }
 
 function generateBins(count, pop) {
