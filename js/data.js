@@ -1,7 +1,10 @@
 import {
   CURRICULUM_SNAPSHOT,
   CURRICULUM_SNAPSHOT_META,
-} from "./curriculum-snapshot.js?v=20260628-live-data7";
+} from "./curriculum-snapshot.js?v=20260628-live-data8";
+
+const CURRICULUM_SNAPSHOT_OBJECTS = new WeakSet(CURRICULUM_SNAPSHOT);
+const OBJECT_SOURCE_META = Symbol("objectSourceMeta");
 
 export function toFiniteNumber(value, fallback = 0) {
   const number = Number(value);
@@ -690,6 +693,82 @@ function isPlainObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+function hasOwnProperty(object, key) {
+  return Object.prototype.hasOwnProperty.call(object, key);
+}
+
+function getObjectSource(object) {
+  return CURRICULUM_SNAPSHOT_OBJECTS.has(object) ? "snapshot" : "live";
+}
+
+function createObjectSourceMeta(object, source) {
+  const attrSources = new Map();
+  const attrs = isPlainObject(object?.attrs) ? object.attrs : {};
+  for (const key of Object.keys(attrs)) {
+    attrSources.set(key, source);
+  }
+
+  return {
+    sources: new Set([source]),
+    attrSources,
+  };
+}
+
+function attachObjectSourceMeta(object, meta) {
+  Object.defineProperty(object, OBJECT_SOURCE_META, {
+    value: meta,
+    enumerable: false,
+    configurable: true,
+  });
+  return object;
+}
+
+function cloneObjectRecord(object, source) {
+  const record = {
+    ...object,
+    attrs: isPlainObject(object?.attrs) ? { ...object.attrs } : {},
+  };
+  return attachObjectSourceMeta(record, createObjectSourceMeta(record, source));
+}
+
+function getObjectSourceMeta(object) {
+  return object?.[OBJECT_SOURCE_META] ?? null;
+}
+
+function objectUsesSnapshot(object) {
+  return getObjectSourceMeta(object)?.sources.has("snapshot") ?? false;
+}
+
+function objectAttrUsesSnapshot(object, ...attrs) {
+  const meta = getObjectSourceMeta(object);
+  return attrs.some((attr) => meta?.attrSources.get(attr) === "snapshot");
+}
+
+function fillMissingValue(existingValue, incomingValue) {
+  if (existingValue !== null && existingValue !== undefined && existingValue !== "") {
+    return existingValue;
+  }
+
+  return incomingValue ?? existingValue ?? "";
+}
+
+function mergeAttrsBySource(existingAttrs, incomingAttrs, meta, source) {
+  const attrs = isPlainObject(existingAttrs) ? { ...existingAttrs } : {};
+  if (!isPlainObject(incomingAttrs)) {
+    return attrs;
+  }
+
+  for (const [key, value] of Object.entries(incomingAttrs)) {
+    const existingSource = meta.attrSources.get(key);
+    if (!hasOwnProperty(attrs, key) || (existingSource === "snapshot" && source !== "snapshot")) {
+      attrs[key] = value;
+      meta.attrSources.set(key, source);
+    }
+  }
+
+  return attrs;
+}
+
 function getObjectNameFromPath(path) {
   const segments = String(path || "").split("/").filter(Boolean);
   return segments.at(-1) || "project";
@@ -714,36 +793,45 @@ function objectKeySet(row) {
 
 function mergeObjectRecords(objects) {
   const records = new Map();
+  const aliases = new Map();
 
   for (const object of objects) {
     if (!object) {
       continue;
     }
 
+    const source = getObjectSource(object);
     const keys = [...objectKeySet({ objectId: object.id, path: object.path, object })];
     const fallbackKey = object.name ? `name:${object.name}:${object.type}` : null;
-    const key = keys[0] ?? fallbackKey;
+    const allKeys = fallbackKey ? [...keys, fallbackKey] : keys;
+    const existingKey = allKeys.map((candidate) => aliases.get(candidate)).find(Boolean) ?? null;
+    const key = existingKey ?? keys[0] ?? fallbackKey;
 
     if (!key) {
       continue;
     }
 
-    const existing = records.get(key);
+    const existing = records.get(existingKey ?? key);
     if (existing) {
-      records.set(key, {
+      const meta = getObjectSourceMeta(existing) ?? createObjectSourceMeta(existing, "live");
+      meta.sources.add(source);
+      records.set(existingKey ?? key, attachObjectSourceMeta({
         ...existing,
-        name: existing.name || object.name,
-        type: existing.type || object.type,
-        path: existing.path || object.path,
-        attrs: {
-          ...(existing.attrs || {}),
-          ...(object.attrs || {}),
-        },
-      });
+        name: fillMissingValue(existing.name, object.name),
+        type: fillMissingValue(existing.type, object.type),
+        path: fillMissingValue(existing.path, object.path),
+        attrs: mergeAttrsBySource(existing.attrs, object.attrs, meta, source),
+      }, meta));
+      for (const alias of allKeys) {
+        aliases.set(alias, existingKey ?? key);
+      }
       continue;
     }
 
-    records.set(key, object);
+    records.set(key, cloneObjectRecord(object, source));
+    for (const alias of allKeys) {
+      aliases.set(alias, key);
+    }
   }
 
   return [...records.values()];
@@ -869,7 +957,7 @@ function getTimelineRows(moduleObject, eventStartAt, programMonthIndex) {
 
   return timeline.map((row) => ({
     month: toFiniteNumber(row?.month),
-    label: monthFromProgramStart(eventStartAt, row?.month),
+    label: parseValidDate(eventStartAt) ? monthFromProgramStart(eventStartAt, row?.month) : `Мес. ${toFiniteNumber(row?.month)}`,
     minLevel: toFiniteNumber(row?.minLevel),
     expectedLevel: toFiniteNumber(row?.expectedLevel),
     checkpointLevel: toFiniteNumber(row?.checkpointLevel),
@@ -992,6 +1080,9 @@ export function deriveProfileInsights(user, details, transactions) {
   ]);
   const moduleObject = findModuleObject(objects, user?.campus);
   const programObjects = objectsInProgram(objects, moduleObject?.path);
+  const timelineUsesCurriculumSnapshot = objectAttrUsesSnapshot(moduleObject, "timeline");
+  const rankUsesCurriculumSnapshot = objectAttrUsesSnapshot(moduleObject, "ranksDefinitions", "levelsDefinitions");
+  const programUsesCurriculumSnapshot = programObjects.some(objectUsesSnapshot) || objectUsesSnapshot(moduleObject);
   const hasLiveLevel = Number.isFinite(details?.eventUser?.level);
   const level = hasLiveLevel ? details.eventUser.level : null;
   const ranks = getRankDefinitions(moduleObject);
@@ -1003,8 +1094,11 @@ export function deriveProfileInsights(user, details, transactions) {
     : currentRank && !nextRank
       ? 100
       : null;
-  const currentEvent = details?.events?.find((event) => event.eventId === details?.eventUser?.eventId) ?? null;
-  const programStartAt = details?.eventUser?.createdAt ?? currentEvent?.event?.startAt ?? null;
+  const currentEvent = hasEventData
+    ? details?.events?.find((event) => event.eventId === details?.eventUser?.eventId) ?? null
+    : null;
+  const confirmedProgramStartAt = currentEvent?.event?.startAt ?? null;
+  const programStartAt = parseValidDate(confirmedProgramStartAt) ? confirmedProgramStartAt : null;
   const programMonthIndex = getProgramMonthIndex(programStartAt);
   const timelineRows = getTimelineRows(moduleObject, programStartAt, programMonthIndex);
   const timelineCurrent = getCurrentTimelineRow(timelineRows, programMonthIndex);
@@ -1030,6 +1124,9 @@ export function deriveProfileInsights(user, details, transactions) {
   const latestSkillKey = isPlainObject(latestBaseSkills)
     ? Object.entries(latestBaseSkills).sort((left, right) => toFiniteNumber(right[1]) - toFiniteNumber(left[1]))[0]?.[0]
     : null;
+  const skillsUseCurriculumSnapshot = hasProgressData && programObjects.some((object) =>
+    isPlainObject(object?.attrs?.baseSkills) && objectAttrUsesSnapshot(object, "baseSkills"),
+  );
   const skillStats = hasProgressData ? buildSkillStats(programObjects, completedProgressForSkills) : [];
   const technicalSkills = pickSkills(skillStats.filter((skill) => skill.group === "technical"), TECHNICAL_SKILL_KEYS, 10);
   const technologySkills = pickSkills(skillStats.filter((skill) => skill.group === "technology"), TECHNOLOGY_SKILL_KEYS, 10);
@@ -1061,8 +1158,13 @@ export function deriveProfileInsights(user, details, transactions) {
     hasLiveLevel,
     programStartAt,
     programMonthIndex,
-    usesCurriculumSnapshot: programObjects.length > 0,
-    curriculumSnapshotMeta: CURRICULUM_SNAPSHOT_META,
+    usesCurriculumSnapshot: programUsesCurriculumSnapshot,
+    curriculumSnapshotMeta: programUsesCurriculumSnapshot ? CURRICULUM_SNAPSHOT_META : null,
+    rankSnapshotMeta: rankUsesCurriculumSnapshot ? CURRICULUM_SNAPSHOT_META : null,
+    timelineSnapshotMeta: timelineUsesCurriculumSnapshot ? CURRICULUM_SNAPSHOT_META : null,
+    forecastSnapshotMeta: timelineUsesCurriculumSnapshot || rankUsesCurriculumSnapshot ? CURRICULUM_SNAPSHOT_META : null,
+    skillsUseCurriculumSnapshot,
+    skillsSnapshotMeta: skillsUseCurriculumSnapshot ? CURRICULUM_SNAPSHOT_META : null,
     ranks,
     levels,
     currentRank,

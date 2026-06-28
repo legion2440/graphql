@@ -57,20 +57,48 @@ function getSnapshotTarget(event, root) {
 }
 
 function getTooltipTarget(event, root) {
-  return getSnapshotTarget(event, root) ?? getPlaceholderTarget(event, root);
+  const placeholderTarget = getPlaceholderTarget(event, root);
+  const snapshotTarget = getSnapshotTarget(event, root);
+  if (!placeholderTarget) {
+    return snapshotTarget;
+  }
+  if (!snapshotTarget) {
+    return placeholderTarget;
+  }
+
+  return placeholderTarget.contains(snapshotTarget) && placeholderTarget !== snapshotTarget
+    ? snapshotTarget
+    : placeholderTarget;
+}
+
+function getSnapshotContext(target) {
+  return target?.closest?.(SNAPSHOT_SELECTOR) ?? null;
 }
 
 function getTooltipText(target) {
-  return target?.dataset?.provenance === "snapshot" && target.dataset.snapshotDate
-    ? `snapshot от ${target.dataset.snapshotDate}`
-    : TOOLTIP_TEXT;
+  const isPlaceholder = target?.matches?.(PLACEHOLDER_SELECTOR);
+  const snapshotTarget = getSnapshotContext(target);
+  const snapshotText =
+    snapshotTarget?.dataset?.provenance === "snapshot" && snapshotTarget.dataset.snapshotDate
+      ? `snapshot от ${snapshotTarget.dataset.snapshotDate}`
+      : "";
+
+  if (isPlaceholder && snapshotText) {
+    return `${TOOLTIP_TEXT} (${snapshotText})`;
+  }
+  if (isPlaceholder) {
+    return TOOLTIP_TEXT;
+  }
+  return snapshotText || TOOLTIP_TEXT;
 }
 
-function isInteractiveInsidePlaceholder(event, target) {
-  if (target?.dataset?.provenance === "snapshot") {
-    return false;
+function syncAriaLabel(target) {
+  if (target) {
+    target.setAttribute("aria-label", getTooltipText(target));
   }
+}
 
+function isInteractiveInsideTooltipTarget(event, target) {
   const interactive = event.target.closest?.(INTERACTIVE_SELECTOR);
   return Boolean(interactive && target?.contains(interactive) && interactive !== target);
 }
@@ -84,6 +112,7 @@ export function initUnderConstruction(root = document.querySelector(".ts-root") 
   const show = (target, pointerType = null) => {
     activeTarget = target;
     pinnedPointerType = pointerType;
+    syncAriaLabel(target);
     tooltip.textContent = getTooltipText(target);
     if (!positionTooltip(tooltip, target)) {
       activeTarget = null;
@@ -108,15 +137,7 @@ export function initUnderConstruction(root = document.querySelector(".ts-root") 
   };
 
   root.querySelectorAll(`${PLACEHOLDER_SELECTOR}, ${SNAPSHOT_SELECTOR}`).forEach((element) => {
-    const isSnapshot = element.matches(SNAPSHOT_SELECTOR);
-    if (!element.hasAttribute("aria-label")) {
-      element.setAttribute(
-        "aria-label",
-        isSnapshot && element.dataset.snapshotDate
-          ? `snapshot от ${element.dataset.snapshotDate}`
-          : "Under construction. Placeholder data.",
-      );
-    }
+    syncAriaLabel(element);
     if (!element.hasAttribute("tabindex")) {
       element.setAttribute("tabindex", "0");
     }
@@ -128,7 +149,7 @@ export function initUnderConstruction(root = document.querySelector(".ts-root") 
     }
 
     const target = getTooltipTarget(event, root);
-    if (target && !isInteractiveInsidePlaceholder(event, target)) {
+    if (target && !isInteractiveInsideTooltipTarget(event, target)) {
       show(target);
     }
   });
@@ -151,14 +172,14 @@ export function initUnderConstruction(root = document.querySelector(".ts-root") 
 
   root.addEventListener("focusin", (event) => {
     const target = getTooltipTarget(event, root);
-    if (target && !isInteractiveInsidePlaceholder(event, target)) {
+    if (target && !isInteractiveInsideTooltipTarget(event, target)) {
       show(target);
     }
   });
 
   root.addEventListener("click", (event) => {
     const target = getTooltipTarget(event, root);
-    if (target && !isInteractiveInsidePlaceholder(event, target)) {
+    if (target && !isInteractiveInsideTooltipTarget(event, target)) {
       show(target);
     }
   });
@@ -178,7 +199,7 @@ export function initUnderConstruction(root = document.querySelector(".ts-root") 
   root.addEventListener("pointerup", (event) => {
     const target = getTooltipTarget(event, root);
 
-    if (!target || isInteractiveInsidePlaceholder(event, target)) {
+    if (!target || isInteractiveInsideTooltipTarget(event, target)) {
       return;
     }
 

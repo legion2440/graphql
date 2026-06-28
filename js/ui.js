@@ -6,7 +6,7 @@ import {
   renderDistributionHistogram,
   renderRadarChart,
   renderXpByProjectChart,
-} from "./charts.js?v=20260628-live-data7";
+} from "./charts.js?v=20260628-live-data8";
 import {
   buildActivityHeatmapData,
   calculateAuditPercentages,
@@ -26,11 +26,11 @@ import {
   getLastXpTransaction,
   getProjectName,
   groupXpByProject,
-} from "./data.js?v=20260628-live-data7";
+} from "./data.js?v=20260628-live-data8";
 import {
   LEADERBOARD_SNAPSHOT,
   LEADERBOARD_SNAPSHOT_META,
-} from "./leaderboard-snapshot.js?v=20260628-live-data7";
+} from "./leaderboard-snapshot.js?v=20260628-live-data8";
 
 export const elements = {
   root: document.querySelector("#app-root"),
@@ -205,6 +205,16 @@ function formatSnapshotDate(capturedDate) {
   return year && month && day ? `${day}.${month}.${year}` : "";
 }
 
+function getSnapshotTooltipText(meta) {
+  const snapshotDate = formatSnapshotDate(meta?.capturedDate);
+  return snapshotDate ? `snapshot от ${snapshotDate}` : "";
+}
+
+function getPlaceholderTooltipText(meta = null) {
+  const snapshotText = getSnapshotTooltipText(meta);
+  return snapshotText ? `Under construction (${snapshotText})` : "Under construction";
+}
+
 function setText(element, value) {
   if (element) {
     element.textContent = value;
@@ -325,21 +335,24 @@ function markLive(...targets) {
       continue;
     }
     target.removeAttribute("data-placeholder");
+    target.removeAttribute("data-provenance");
+    target.removeAttribute("data-snapshot-date");
     target.removeAttribute("tabindex");
     target.removeAttribute("aria-label");
   }
 }
 
 function markSnapshot(meta, ...targets) {
+  const snapshotText = getSnapshotTooltipText(meta);
   const snapshotDate = formatSnapshotDate(meta?.capturedDate);
   for (const target of targets) {
-    if (!target || !snapshotDate) {
+    if (!target || !snapshotText || !snapshotDate) {
       continue;
     }
 
     target.dataset.provenance = "snapshot";
     target.dataset.snapshotDate = snapshotDate;
-    target.setAttribute("aria-label", `snapshot от ${snapshotDate}`);
+    target.setAttribute("aria-label", snapshotText);
     if (!target.hasAttribute("tabindex")) {
       target.setAttribute("tabindex", "0");
     }
@@ -365,7 +378,7 @@ function restoreInitialPlaceholders() {
       continue;
     }
     target.setAttribute("data-placeholder", "");
-    target.setAttribute("aria-label", "Under construction. Placeholder data.");
+    target.setAttribute("aria-label", "Under construction");
     if (!target.hasAttribute("tabindex")) {
       target.setAttribute("tabindex", "0");
     }
@@ -418,7 +431,7 @@ function renderRankLadder(insights) {
   }
 
   markLive(elements.rankLadder.closest("[data-placeholder]"));
-  markSnapshot(insights.curriculumSnapshotMeta, elements.rankLadder.closest(".wide-card"));
+  markSnapshot(insights.rankSnapshotMeta, elements.rankLadder.closest(".wide-card"));
   elements.rankLadder.replaceChildren();
 
   for (const rank of insights.ranks) {
@@ -447,16 +460,28 @@ function renderForecast(insights) {
   }
 
   markLive(elements.forecastTable.closest("[data-placeholder]"));
-  markSnapshot(insights.curriculumSnapshotMeta, elements.forecastTable.closest("[data-provenance]") ?? elements.forecastTable.closest(".wide-card"));
+  markSnapshot(insights.forecastSnapshotMeta, elements.forecastTable.closest(".wide-card"));
   const rows = insights.timelineRows;
-  const currentIndex = Math.max(0, rows.findIndex((row) => row === insights.timelineCurrent));
+  const currentIndex = rows.findIndex((row) => row === insights.timelineCurrent);
   const current = rows[currentIndex] ?? null;
-  const next = rows[currentIndex + 1] ?? rows.at(-1) ?? null;
+  const next = currentIndex >= 0 ? rows[currentIndex + 1] ?? rows.at(-1) ?? null : null;
   elements.forecastTable.replaceChildren();
 
   const head = createEl("div", "forecast-head");
   head.append(createEl("span", "", "МЕТРИКА"), createEl("span", "", "СЕЙЧАС"), createEl("span", "", current?.label || "ТЕКУЩИЙ"), createEl("span", "", next?.label || "СЛЕД."));
   elements.forecastTable.append(head);
+
+  if (currentIndex < 0) {
+    const unavailableRow = createEl("div");
+    unavailableRow.append(
+      createEl("span", "", "Timeline"),
+      createEl("strong", "", Number.isFinite(insights.level) ? String(insights.level) : "—"),
+      createEl("span", "", "текущая позиция неизвестна"),
+      createEl("span", "", rows.length > 0 ? "нужна подтверждённая дата старта" : "metadata недоступна"),
+    );
+    elements.forecastTable.append(unavailableRow);
+    return;
+  }
 
   const levelRow = createEl("div");
   levelRow.append(
@@ -488,8 +513,13 @@ function renderTimeline(insights) {
   }
 
   markLive(elements.timelineRow.closest("[data-placeholder]"));
-  markSnapshot(insights.curriculumSnapshotMeta, elements.timelineRow.closest(".wide-card"));
+  markSnapshot(insights.timelineSnapshotMeta, elements.timelineRow.closest(".wide-card"));
   elements.timelineRow.replaceChildren();
+
+  if (insights.timelineRows.length === 0) {
+    elements.timelineRow.replaceChildren(createEl("p", "chart-empty", "Timeline metadata недоступна."));
+    return;
+  }
 
   for (const row of insights.timelineRows) {
     const item = createEl("div");
@@ -509,14 +539,14 @@ function renderTimeline(insights) {
   }
 }
 
-function renderSkillCard(skill) {
+function renderSkillCard(skill, snapshotMeta = null) {
   const card = createEl("article", "skill-card ts-card");
   const top = createEl("div");
   top.append(createEl("strong", "", skill.label), createEl("span", "", `${skill.completed}/${skill.total}`));
   const tier = createEl("em", "tier-none", "—");
   tier.setAttribute("data-placeholder", "");
   tier.setAttribute("tabindex", "0");
-  tier.setAttribute("aria-label", "Under construction. Placeholder data.");
+  tier.setAttribute("aria-label", getPlaceholderTooltipText(snapshotMeta));
   const bar = createEl("i", "ts-fill");
   bar.style.width = `${Math.max(0, Math.min(100, skill.value))}%`;
   card.append(top, tier, bar);
@@ -532,7 +562,7 @@ function renderSkillGrid(container, skills, snapshotMeta = null) {
   markSnapshot(snapshotMeta, container.closest("section"));
   container.replaceChildren();
   for (const skill of skills) {
-    container.append(renderSkillCard(skill));
+    container.append(renderSkillCard(skill, snapshotMeta));
   }
 }
 
@@ -542,7 +572,7 @@ function renderSkillBreakdown(skills) {
   }
 
   markLive(elements.skillBreakdown.closest("[data-placeholder]"));
-  markSnapshot(currentModel?.insights?.curriculumSnapshotMeta, elements.skillBreakdown.closest(".wide-card"));
+  markSnapshot(currentModel?.insights?.skillsSnapshotMeta, elements.skillBreakdown.closest(".wide-card"));
   elements.skillBreakdown.replaceChildren();
   for (const skill of skills.slice(0, 6)) {
     const row = createEl("div");
@@ -740,7 +770,7 @@ function renderDashboardCharts(model = null) {
       elements.technologyRadar?.closest("[data-placeholder]"),
     );
     markSnapshot(
-      model.insights.curriculumSnapshotMeta,
+      model.insights.skillsSnapshotMeta,
       elements.statsSkillsRadar?.closest(".wide-card"),
       elements.techRadar?.closest(".wide-card"),
       elements.technologyRadar?.closest(".wide-card"),
@@ -798,6 +828,10 @@ function renderPublicRadar(model = currentModel) {
       : model?.insights?.topSkills ?? publicRadarData[publicRadarMode];
   const axes = Array.isArray(source) && source[0]?.value !== undefined ? radarAxes(source, publicRadarMode === "all" ? 10 : 8) : source;
   renderRadarChart(elements.publicRadar, axes, "Public skills radar");
+  if (model) {
+    markLive(elements.publicRadar.closest("[data-placeholder]") ?? elements.publicRadar.closest(".radar-card"));
+    markSnapshot(model.insights.skillsSnapshotMeta, elements.publicRadar.closest(".radar-card"));
+  }
 }
 
 function formatLeaderboardXp(value) {
@@ -1160,14 +1194,16 @@ export function renderDashboard(user, transactions, details = null) {
     const icon = elements.progressWarning.querySelector("span");
     const strong = elements.progressWarning.querySelector("strong");
     if (icon) {
-      icon.textContent = insights.isBehindTimeline ? "⚠" : "✓";
+      icon.textContent = currentTimeline ? (insights.isBehindTimeline ? "⚠" : "✓") : "i";
     }
     if (strong) {
       strong.textContent = Number.isFinite(insights.level) && insights.isBehindTimeline && currentTimeline
         ? `Текущий уровень (${insights.level}) ниже минимально ожидаемого (${currentTimeline.minLevel}) для ${currentTimeline.label}.`
         : currentTimeline && Number.isFinite(insights.level)
           ? `Текущий уровень (${insights.level}) соответствует timeline для ${currentTimeline.label}.`
-          : "Нет подтверждённых данных timeline.";
+          : insights.timelineRows.length > 0
+            ? "Timeline metadata доступна; подтверждённая дата старта программы отсутствует."
+            : "Нет подтверждённых данных timeline.";
     }
   }
 
@@ -1190,7 +1226,7 @@ export function renderDashboard(user, transactions, details = null) {
     );
   }
 
-  if (insights.hasLiveLevel && currentTimeline) {
+  if (elements.progressWarning) {
     liveTargets.push(elements.progressWarning);
   }
 
@@ -1200,17 +1236,18 @@ export function renderDashboard(user, transactions, details = null) {
 
   if (insights.hasLiveLevel) {
     markSnapshot(
-      insights.curriculumSnapshotMeta,
+      insights.rankSnapshotMeta,
       elements.profileRankPill,
       elements.levelNextLabel?.closest(".level-wrap"),
       elements.currentRankCard,
-      currentTimeline ? elements.progressWarning : null,
     );
   }
 
+  markSnapshot(insights.timelineSnapshotMeta, elements.progressWarning);
+
   if (insights.hasProgressData) {
     markSnapshot(
-      insights.curriculumSnapshotMeta,
+      insights.skillsSnapshotMeta,
       elements.lastSkillValue?.closest(".compact-card"),
     );
   }
@@ -1223,8 +1260,8 @@ export function renderDashboard(user, transactions, details = null) {
   renderForecast(insights);
   renderTimeline(insights);
   if (insights.hasProgressData) {
-    renderSkillGrid(elements.technicalSkillGrid, insights.technicalSkills, insights.curriculumSnapshotMeta);
-    renderSkillGrid(elements.technologySkillGrid, insights.technologySkills, insights.curriculumSnapshotMeta);
+    renderSkillGrid(elements.technicalSkillGrid, insights.technicalSkills, insights.skillsSnapshotMeta);
+    renderSkillGrid(elements.technologySkillGrid, insights.technologySkills, insights.skillsSnapshotMeta);
     renderSkillBreakdown(insights.topSkills);
   }
   renderTeamwork(user, insights);

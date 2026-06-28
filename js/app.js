@@ -1,5 +1,5 @@
 import { clearToken, getToken, logout, signIn, storeToken } from "./auth.js";
-import { normalizeProfileDetails, normalizeTransactions, normalizeUser } from "./data.js?v=20260628-live-data7";
+import { normalizeProfileDetails, normalizeTransactions, normalizeUser } from "./data.js?v=20260628-live-data8";
 import { graphqlRequest } from "./graphql.js";
 import {
   PROFILE_CURRICULUM_QUERY,
@@ -9,9 +9,9 @@ import {
   PROFILE_QUERY,
   XP_TRANSACTIONS_QUERY,
   XP_TRANSACTIONS_VARIABLES,
-} from "./queries.js?v=20260628-live-data7";
+} from "./queries.js?v=20260628-live-data8";
 import { initTheme } from "./theme.js";
-import { initUnderConstruction } from "./under-construction.js?v=20260628-live-data7";
+import { initUnderConstruction } from "./under-construction.js?v=20260628-live-data8";
 import {
   elements,
   initializeUi,
@@ -22,7 +22,7 @@ import {
   setLoginLoading,
   setView,
   updateLoadingStage,
-} from "./ui.js?v=20260628-live-data7";
+} from "./ui.js?v=20260628-live-data8";
 
 const state = {
   isBusy: false,
