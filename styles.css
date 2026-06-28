@@ -603,6 +603,19 @@ p {
   gap: 14px;
 }
 
+.graphiql-nav-link {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  padding: 8px 13px;
+  border: 1px solid var(--brd);
+  border-radius: 10px;
+  color: var(--text);
+  background: var(--bg2);
+  font: 600 13px "Space Grotesk", sans-serif;
+  text-decoration: none;
+}
+
 .theme-toggle {
   gap: 9px;
   min-height: 38px;
