@@ -6,7 +6,7 @@ import {
   renderDistributionHistogram,
   renderRadarChart,
   renderXpByProjectChart,
-} from "./charts.js?v=20260628-live-data9";
+} from "./charts.js?v=20260628-live-data10";
 import {
   buildActivityHeatmapData,
   calculateAuditPercentages,
@@ -26,11 +26,11 @@ import {
   getLastXpTransaction,
   getProjectName,
   groupXpByProject,
-} from "./data.js?v=20260628-live-data9";
+} from "./data.js?v=20260628-live-data10";
 import {
   LEADERBOARD_SNAPSHOT,
   LEADERBOARD_SNAPSHOT_META,
-} from "./leaderboard-snapshot.js?v=20260628-live-data9";
+} from "./leaderboard-snapshot.js?v=20260628-live-data10";
 
 export const elements = {
   root: document.querySelector("#app-root"),

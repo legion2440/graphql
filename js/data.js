@@ -1,7 +1,7 @@
 import {
   CURRICULUM_SNAPSHOT,
   CURRICULUM_SNAPSHOT_META,
-} from "./curriculum-snapshot.js?v=20260628-live-data9";
+} from "./curriculum-snapshot.js?v=20260628-live-data10";
 
 const CURRICULUM_SNAPSHOT_OBJECTS = new WeakSet(CURRICULUM_SNAPSHOT);
 const OBJECT_SOURCE_META = Symbol("objectSourceMeta");
@@ -1121,10 +1121,7 @@ export function deriveProfileInsights(user, details, transactions) {
     : currentRank && !nextRank
       ? 100
       : null;
-  const currentEvent = hasEventData
-    ? details?.events?.find((event) => event.eventId === details?.eventUser?.eventId) ?? null
-    : null;
-  const confirmedProgramStartAt = currentEvent?.event?.startAt ?? null;
+  const confirmedProgramStartAt = details?.eventUser?.createdAt ?? null;
   const programStartAt = parseValidDate(confirmedProgramStartAt) ? confirmedProgramStartAt : null;
   const programMonthIndex = getProgramMonthIndex(programStartAt);
   const timelineRows = getTimelineRows(moduleObject, programStartAt, programMonthIndex);
