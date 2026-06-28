@@ -300,7 +300,9 @@ Password не сохраняется приложением.
 
 - semantic HTML;
 - CSS custom properties и темы;
-- vanilla JavaScript;
+- основной dashboard реализован на vanilla JavaScript;
+- GraphiQL developer page использует официальный React-компонент GraphiQL через CDN;
+- без build step и локальных npm-зависимостей.
 - ES modules;
 - Fetch API;
 - SVG DOM API для charts;
