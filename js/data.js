@@ -1,7 +1,7 @@
 import {
   CURRICULUM_SNAPSHOT,
   CURRICULUM_SNAPSHOT_META,
-} from "./curriculum-snapshot.js?v=20260628-live-data8";
+} from "./curriculum-snapshot.js?v=20260628-live-data9";
 
 const CURRICULUM_SNAPSHOT_OBJECTS = new WeakSet(CURRICULUM_SNAPSHOT);
 const OBJECT_SOURCE_META = Symbol("objectSourceMeta");
@@ -752,6 +752,11 @@ function fillMissingValue(existingValue, incomingValue) {
   return incomingValue ?? existingValue ?? "";
 }
 
+function normalizeObjectPath(path) {
+  const value = typeof path === "string" ? path.trim() : "";
+  return value.length > 1 ? value.replace(/\/+$/u, "") : value;
+}
+
 function mergeAttrsBySource(existingAttrs, incomingAttrs, meta, source) {
   const attrs = isPlainObject(existingAttrs) ? { ...existingAttrs } : {};
   if (!isPlainObject(incomingAttrs)) {
@@ -783,17 +788,18 @@ function objectKeySet(row) {
     keys.add(`id:${row.object.id}`);
   }
   if (typeof row?.path === "string" && row.path.trim()) {
-    keys.add(`path:${row.path}`);
+    keys.add(`path:${normalizeObjectPath(row.path)}`);
   }
   if (typeof row?.object?.path === "string" && row.object.path.trim()) {
-    keys.add(`path:${row.object.path}`);
+    keys.add(`path:${normalizeObjectPath(row.object.path)}`);
   }
   return keys;
 }
 
 function mergeObjectRecords(objects) {
   const records = new Map();
-  const aliases = new Map();
+  const strongAliases = new Map();
+  const fallbackAliases = new Map();
 
   for (const object of objects) {
     if (!object) {
@@ -801,11 +807,14 @@ function mergeObjectRecords(objects) {
     }
 
     const source = getObjectSource(object);
-    const keys = [...objectKeySet({ objectId: object.id, path: object.path, object })];
-    const fallbackKey = object.name ? `name:${object.name}:${object.type}` : null;
-    const allKeys = fallbackKey ? [...keys, fallbackKey] : keys;
-    const existingKey = allKeys.map((candidate) => aliases.get(candidate)).find(Boolean) ?? null;
-    const key = existingKey ?? keys[0] ?? fallbackKey;
+    const strongKeys = [...objectKeySet({ objectId: object.id, path: object.path, object })];
+    const fallbackKey = strongKeys.length === 0 && object.name ? `name:${object.name}:${object.type}` : null;
+    const existingKey = strongKeys.length > 0
+      ? strongKeys.map((candidate) => strongAliases.get(candidate)).find(Boolean) ?? null
+      : fallbackKey
+        ? fallbackAliases.get(fallbackKey) ?? null
+        : null;
+    const key = existingKey ?? strongKeys[0] ?? fallbackKey;
 
     if (!key) {
       continue;
@@ -822,15 +831,21 @@ function mergeObjectRecords(objects) {
         path: fillMissingValue(existing.path, object.path),
         attrs: mergeAttrsBySource(existing.attrs, object.attrs, meta, source),
       }, meta));
-      for (const alias of allKeys) {
-        aliases.set(alias, existingKey ?? key);
+      for (const alias of strongKeys) {
+        strongAliases.set(alias, existingKey ?? key);
+      }
+      if (fallbackKey) {
+        fallbackAliases.set(fallbackKey, existingKey ?? key);
       }
       continue;
     }
 
     records.set(key, cloneObjectRecord(object, source));
-    for (const alias of allKeys) {
-      aliases.set(alias, key);
+    for (const alias of strongKeys) {
+      strongAliases.set(alias, key);
+    }
+    if (fallbackKey) {
+      fallbackAliases.set(fallbackKey, key);
     }
   }
 
@@ -864,14 +879,26 @@ function findMatchingObject(row, objects) {
   }) ?? null;
 }
 
-function getBaseSkillsForProgress(row, objects) {
+function getBaseSkillsSourceForProgress(row, objects) {
   const directBaseSkills = row?.object?.attrs?.baseSkills;
   if (isPlainObject(directBaseSkills)) {
-    return directBaseSkills;
+    return {
+      baseSkills: directBaseSkills,
+      usesSnapshot: false,
+    };
   }
 
-  const matchedBaseSkills = findMatchingObject(row, objects)?.attrs?.baseSkills;
-  return isPlainObject(matchedBaseSkills) ? matchedBaseSkills : null;
+  const matchedObject = findMatchingObject(row, objects);
+  const matchedBaseSkills = matchedObject?.attrs?.baseSkills;
+  return isPlainObject(matchedBaseSkills)
+    ? {
+        baseSkills: matchedBaseSkills,
+        usesSnapshot: objectAttrUsesSnapshot(matchedObject, "baseSkills"),
+      }
+    : {
+        baseSkills: null,
+        usesSnapshot: false,
+      };
 }
 
 function findModuleObject(objects, campus = "astanahub") {
@@ -1081,7 +1108,7 @@ export function deriveProfileInsights(user, details, transactions) {
   const moduleObject = findModuleObject(objects, user?.campus);
   const programObjects = objectsInProgram(objects, moduleObject?.path);
   const timelineUsesCurriculumSnapshot = objectAttrUsesSnapshot(moduleObject, "timeline");
-  const rankUsesCurriculumSnapshot = objectAttrUsesSnapshot(moduleObject, "ranksDefinitions", "levelsDefinitions");
+  const rankUsesCurriculumSnapshot = objectAttrUsesSnapshot(moduleObject, "ranksDefinitions");
   const programUsesCurriculumSnapshot = programObjects.some(objectUsesSnapshot) || objectUsesSnapshot(moduleObject);
   const hasLiveLevel = Number.isFinite(details?.eventUser?.level);
   const level = hasLiveLevel ? details.eventUser.level : null;
@@ -1120,7 +1147,8 @@ export function deriveProfileInsights(user, details, transactions) {
   const latestProgress = hasProgressData ? details?.progress?.[0] ?? null : null;
   const completedProgressForSkills = mergeProgressRows([...allDoneProgress, ...doneProgress]);
   const latestCompleted = allDoneProgress[0] ?? doneProgress[0] ?? null;
-  const latestBaseSkills = getBaseSkillsForProgress(latestCompleted, programObjects);
+  const latestBaseSkillsSource = getBaseSkillsSourceForProgress(latestCompleted, programObjects);
+  const latestBaseSkills = latestBaseSkillsSource.baseSkills;
   const latestSkillKey = isPlainObject(latestBaseSkills)
     ? Object.entries(latestBaseSkills).sort((left, right) => toFiniteNumber(right[1]) - toFiniteNumber(left[1]))[0]?.[0]
     : null;
@@ -1165,6 +1193,7 @@ export function deriveProfileInsights(user, details, transactions) {
     forecastSnapshotMeta: timelineUsesCurriculumSnapshot || rankUsesCurriculumSnapshot ? CURRICULUM_SNAPSHOT_META : null,
     skillsUseCurriculumSnapshot,
     skillsSnapshotMeta: skillsUseCurriculumSnapshot ? CURRICULUM_SNAPSHOT_META : null,
+    latestSkillSnapshotMeta: latestBaseSkillsSource.usesSnapshot ? CURRICULUM_SNAPSHOT_META : null,
     ranks,
     levels,
     currentRank,

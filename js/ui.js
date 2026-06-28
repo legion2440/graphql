@@ -6,7 +6,7 @@ import {
   renderDistributionHistogram,
   renderRadarChart,
   renderXpByProjectChart,
-} from "./charts.js?v=20260628-live-data8";
+} from "./charts.js?v=20260628-live-data9";
 import {
   buildActivityHeatmapData,
   calculateAuditPercentages,
@@ -26,11 +26,11 @@ import {
   getLastXpTransaction,
   getProjectName,
   groupXpByProject,
-} from "./data.js?v=20260628-live-data8";
+} from "./data.js?v=20260628-live-data9";
 import {
   LEADERBOARD_SNAPSHOT,
   LEADERBOARD_SNAPSHOT_META,
-} from "./leaderboard-snapshot.js?v=20260628-live-data8";
+} from "./leaderboard-snapshot.js?v=20260628-live-data9";
 
 export const elements = {
   root: document.querySelector("#app-root"),
@@ -1247,7 +1247,7 @@ export function renderDashboard(user, transactions, details = null) {
 
   if (insights.hasProgressData) {
     markSnapshot(
-      insights.skillsSnapshotMeta,
+      insights.latestSkillSnapshotMeta,
       elements.lastSkillValue?.closest(".compact-card"),
     );
   }
