@@ -1951,7 +1951,7 @@ p {
 .leader-head,
 .leader-row {
   display: grid;
-  grid-template-columns: 40px 40px minmax(160px, 1fr) 46px 104px 150px 48px;
+  grid-template-columns: 40px 40px minmax(160px, 1fr) 46px 104px 56px 150px 48px;
   align-items: center;
   gap: 14px;
 }

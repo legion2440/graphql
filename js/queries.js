@@ -39,8 +39,8 @@ export const XP_TRANSACTIONS_VARIABLES = Object.freeze({
   eventId: 96,
 });
 
-export const PROFILE_DETAILS_QUERY = `
-  query ProfileDetails($userId: Int!, $eventId: Int!, $type: String!) {
+export const PROFILE_EVENT_QUERY = `
+  query ProfileEvent($userId: Int!, $eventId: Int!, $type: String!) {
     event_user(where: { userId: { _eq: $userId }, eventId: { _eq: $eventId } }) {
       id
       userId
@@ -57,7 +57,7 @@ export const PROFILE_DETAILS_QUERY = `
       }
     }
 
-    label_user(where: { userId: { _eq: $userId } }) {
+    label_user(where: { userId: { _eq: $userId }, eventId: { _eq: $eventId } }) {
       id
       userId
       eventId
@@ -86,10 +86,33 @@ export const PROFILE_DETAILS_QUERY = `
       }
     }
 
+    events: event_user(where: { userId: { _eq: $userId } }, order_by: { createdAt: desc }, limit: 80) {
+      id
+      eventId
+      level
+      createdAt
+      event {
+        id
+        path
+        createdAt
+        startAt
+        endAt
+        object {
+          id
+          name
+          type
+        }
+      }
+    }
+  }
+`;
+
+export const PROFILE_PROGRESS_QUERY = `
+  query ProfileProgress($userId: Int!, $eventId: Int!) {
     progress(
       where: { userId: { _eq: $userId }, eventId: { _eq: $eventId } }
       order_by: { updatedAt: desc }
-      limit: 80
+      limit: 4000
     ) {
       id
       userId
@@ -129,7 +152,11 @@ export const PROFILE_DETAILS_QUERY = `
         attrs
       }
     }
+  }
+`;
 
+export const PROFILE_GROUPS_QUERY = `
+  query ProfileGroups($userId: Int!, $eventId: Int!) {
     group_user(
       where: { userId: { _eq: $userId }, eventId: { _eq: $eventId } }
       order_by: { updatedAt: desc }
@@ -161,25 +188,6 @@ export const PROFILE_DETAILS_QUERY = `
       }
     }
 
-    events: event_user(where: { userId: { _eq: $userId } }, order_by: { createdAt: desc }, limit: 80) {
-      id
-      eventId
-      level
-      createdAt
-      event {
-        id
-        path
-        createdAt
-        startAt
-        endAt
-        object {
-          id
-          name
-          type
-        }
-      }
-    }
-
     auditsAsAuditor: audit_aggregate(where: { auditorId: { _eq: $userId } }) {
       aggregate {
         count
@@ -205,7 +213,11 @@ export const PROFILE_DETAILS_QUERY = `
       startAt
       endAt
     }
+  }
+`;
 
+export const PROFILE_CURRICULUM_QUERY = `
+  query ProfileCurriculum {
     curriculumObjects: object(
       where: {
         _or: [

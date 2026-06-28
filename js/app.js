@@ -1,14 +1,17 @@
 import { clearToken, getToken, logout, signIn, storeToken } from "./auth.js";
-import { normalizeProfileDetails, normalizeTransactions, normalizeUser } from "./data.js?v=20260628-live-data3";
+import { normalizeProfileDetails, normalizeTransactions, normalizeUser } from "./data.js?v=20260628-live-data7";
 import { graphqlRequest } from "./graphql.js";
 import {
-  PROFILE_DETAILS_QUERY,
+  PROFILE_CURRICULUM_QUERY,
+  PROFILE_EVENT_QUERY,
+  PROFILE_GROUPS_QUERY,
+  PROFILE_PROGRESS_QUERY,
   PROFILE_QUERY,
   XP_TRANSACTIONS_QUERY,
   XP_TRANSACTIONS_VARIABLES,
-} from "./queries.js?v=20260628-live-data3";
+} from "./queries.js?v=20260628-live-data7";
 import { initTheme } from "./theme.js";
-import { initUnderConstruction } from "./under-construction.js";
+import { initUnderConstruction } from "./under-construction.js?v=20260628-live-data7";
 import {
   elements,
   initializeUi,
@@ -19,7 +22,7 @@ import {
   setLoginLoading,
   setView,
   updateLoadingStage,
-} from "./ui.js?v=20260628-live-data3";
+} from "./ui.js?v=20260628-live-data7";
 
 const state = {
   isBusy: false,
@@ -51,6 +54,48 @@ function markStage(key, stateName, status) {
   updateLoadingStage(key, stateName, status);
 }
 
+async function fetchOptionalProfileDetails(userId) {
+  const variables = {
+    userId,
+    eventId: XP_TRANSACTIONS_VARIABLES.eventId,
+    type: XP_TRANSACTIONS_VARIABLES.type,
+  };
+  const eventVariables = {
+    userId,
+    eventId: XP_TRANSACTIONS_VARIABLES.eventId,
+  };
+  const optionalQueries = [
+    ["event", PROFILE_EVENT_QUERY, variables],
+    ["progress", PROFILE_PROGRESS_QUERY, eventVariables],
+    ["groups", PROFILE_GROUPS_QUERY, eventVariables],
+    ["curriculum", PROFILE_CURRICULUM_QUERY, {}],
+  ];
+  const settled = await Promise.allSettled(
+    optionalQueries.map(([name, query, queryVariables]) =>
+      graphqlRequest(query, queryVariables).then((data) => ({ name, data })),
+    ),
+  );
+  const details = {};
+  const loaded = {};
+
+  settled.forEach((result, index) => {
+    const [name] = optionalQueries[index];
+    if (result.status === "fulfilled") {
+      loaded[name] = true;
+      Object.assign(details, result.value.data);
+      return;
+    }
+
+    loaded[name] = false;
+    console.warn(`Optional profile enrichment "${name}" failed.`, result.reason);
+  });
+
+  return {
+    ...details,
+    __loaded: loaded,
+  };
+}
+
 function showLogin(message = "") {
   setView("login");
   setLoginError(message);
@@ -80,17 +125,14 @@ async function loadAuthenticatedProfile({ restoredSession = false, resetStages =
   state.user = normalizeUser(profileData.user);
   markStage("profileQuery", "done", "успешно");
 
-  markStage("xpQuery", "active", "запрос");
+  markStage("xpQuery", "active", "XP");
   const userId = Number(state.user.id);
   const xpData = await graphqlRequest(XP_TRANSACTIONS_QUERY, {
     ...XP_TRANSACTIONS_VARIABLES,
     userId,
   });
-  const detailsData = await graphqlRequest(PROFILE_DETAILS_QUERY, {
-    userId,
-    eventId: XP_TRANSACTIONS_VARIABLES.eventId,
-    type: XP_TRANSACTIONS_VARIABLES.type,
-  });
+  markStage("xpQuery", "active", "доп. данные");
+  const detailsData = await fetchOptionalProfileDetails(userId);
   markStage("xpQuery", "done", "успешно");
 
   markStage("normalization", "active", "обработка");

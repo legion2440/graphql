@@ -1,5 +1,10 @@
 // Static curriculum snapshot copied from https://01.tomorrow-school.ai/api/object/astanahub.
 // Contains public object metadata only; user progress stays live via GraphQL.
+export const CURRICULUM_SNAPSHOT_META = Object.freeze({
+  capturedDate: "2026-06-28",
+  source: "https://01.tomorrow-school.ai/api/object/astanahub",
+});
+
 export const CURRICULUM_SNAPSHOT = [
   {
     "id": 110491,

@@ -1,4 +1,4 @@
-import { formatCompactNumber, formatDate, formatNumber, formatXp } from "./data.js";
+import { formatCompactNumber, formatDate, formatExactNumber, formatNumber, formatXp } from "./data.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -18,6 +18,10 @@ function createSvgElement(name, attributes = {}, text = "") {
 
 function appendTitle(element, text) {
   element.append(createSvgElement("title", {}, text));
+}
+
+function formatExactXp(value) {
+  return `${formatExactNumber(value)} XP`;
 }
 
 function renderEmptyState(container, message) {
@@ -250,8 +254,8 @@ export function renderCumulativeXpChart(container, entries, getProjectName) {
       [
         formatDate(point.transaction.date),
         projectName,
-        `Transaction: ${formatXp(point.transaction.amount)}`,
-        `Cumulative: ${formatXp(point.cumulative)}`,
+        `Transaction: ${formatExactXp(point.transaction.amount)}`,
+        `Cumulative: ${formatExactXp(point.cumulative)}`,
       ].join(" — "),
     );
     svg.append(circle);
@@ -296,7 +300,7 @@ export function renderXpByProjectChart(container, projects) {
     const fillWidth = Math.max(0, Math.min(barWidth, (safeXp / maxXp) * barWidth));
     const group = createSvgElement("g", { tabindex: 0 });
 
-    appendTitle(group, `${project.name} — ${formatXp(project.xp)} · ${project.transactions} XP transactions`);
+    appendTitle(group, `${project.name} — ${formatExactXp(project.xp)} · ${project.transactions} XP transactions`);
     group.append(
       createSvgElement(
         "text",
@@ -333,7 +337,7 @@ export function renderXpByProjectChart(container, projects) {
           class: "chart-value",
           "text-anchor": "end",
         },
-        formatXp(project.xp),
+        formatExactNumber(project.xp),
       ),
     );
     svg.append(group);
@@ -382,8 +386,8 @@ export function renderActivityHeatmap(container, heatmap) {
     item.type = "button";
     item.className = "heatmap-cell";
     item.setAttribute("data-level", String(cell.level));
-    item.setAttribute("aria-label", `${formatDate(cell.date)}: ${formatXp(cell.xp)}`);
-    item.title = `${formatDate(cell.date)} — ${formatXp(cell.xp)}`;
+    item.setAttribute("aria-label", `${formatDate(cell.date)}: ${formatExactXp(cell.xp)}`);
+    item.title = `${formatDate(cell.date)} — ${formatExactXp(cell.xp)}`;
     grid.append(item);
   }
 
@@ -534,19 +538,16 @@ export function renderRadarChart(container, axes, title = "Skills radar chart") 
   container.append(svg);
 }
 
-export function renderCompareChart(container, data = {}) {
-  const months =
-    Array.isArray(data.months) && data.months.length > 0
-      ? data.months
-      : ["Сен", "Окт", "Ноя", "Дек", "Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт"];
-  const you =
-    Array.isArray(data.you) && data.you.length > 0
-      ? data.you
-      : [40, 96, 165, 250, 322, 410, 520, 642, 760, 883, 1001, 1122, 1210, 1284];
-  const cohort =
-    Array.isArray(data.cohort) && data.cohort.length > 0
-      ? data.cohort
-      : [20, 48, 82, 120, 150, 188, 230, 280, 320, 360, 410, 455, 500, 540];
+export function renderCompareChart(container, data = null) {
+  const months = Array.isArray(data?.months) ? data.months : [];
+  const you = Array.isArray(data?.you) ? data.you : [];
+  const cohort = Array.isArray(data?.cohort) ? data.cohort : [];
+
+  if (months.length === 0 || you.length === 0 || cohort.length === 0) {
+    renderEmptyState(container, "No confirmed historical cohort data is available.");
+    return;
+  }
+
   renderDualLineChart(container, you, cohort, months, data.title);
 }
 
@@ -591,7 +592,7 @@ function renderDualLineChart(container, you, cohort, months, title = "You versus
       createSvgElement(
         "text",
         { x: margin.left - 10, y: y + 4, class: "chart-label", "text-anchor": "end" },
-        `${Math.round(max * ratio)}kB`,
+        `${formatExactNumber(max * ratio)} XP`,
       ),
     );
   }
@@ -637,7 +638,12 @@ export function renderDistributionHistogram(container, count = 50, pop = "all", 
   container.replaceChildren();
 
   const values = Array.isArray(snapshot.values) ? snapshot.values.filter(Number.isFinite) : [];
-  const bins = values.length > 0 ? generateSnapshotBins(values, count) : generateBins(count, pop);
+  if (values.length === 0) {
+    renderEmptyState(container, "No leaderboard snapshot XP data is available.");
+    return;
+  }
+
+  const bins = generateSnapshotBins(values, count);
   const width = 860;
   const height = 300;
   const margin = { left: 50, right: 14, top: 16, bottom: 40 };
@@ -645,12 +651,12 @@ export function renderDistributionHistogram(container, count = 50, pop = "all", 
   const plotHeight = height - margin.top - margin.bottom;
   const max = Math.max(1, ...bins);
   const barWidth = plotWidth / bins.length;
-  const domainMax = Math.max(1, ...(values.length > 0 ? values : bins));
+  const domainMax = Math.max(1, ...values);
   const markerValue = Number.isFinite(snapshot.markerValue) ? snapshot.markerValue : null;
-  const yourIndex =
-    markerValue !== null && values.length > 0
-      ? Math.min(bins.length - 1, Math.max(0, Math.floor((markerValue / domainMax) * bins.length)))
-      : Math.min(bins.length - 1, Math.max(0, Math.round(bins.length * 0.68)));
+  const hasMarker = markerValue !== null;
+  const yourIndex = hasMarker
+    ? Math.min(bins.length - 1, Math.max(0, Math.floor((markerValue / domainMax) * bins.length)))
+    : -1;
   const svg = createSvgElement("svg", {
     viewBox: `0 0 ${width} ${height}`,
     width: "100%",
@@ -707,30 +713,35 @@ export function renderDistributionHistogram(container, count = 50, pop = "all", 
       width: Math.max(1, barWidth - 1.2).toFixed(1),
       height: barHeight.toFixed(1),
       rx: 1.5,
-      fill: index === yourIndex ? "var(--lime)" : "var(--grid)",
-      style: index === yourIndex ? "filter: drop-shadow(0 0 8px var(--lime-a))" : "",
+      fill: hasMarker && index === yourIndex ? "var(--lime)" : "var(--grid)",
+      style: hasMarker && index === yourIndex ? "filter: drop-shadow(0 0 8px var(--lime-a))" : "",
     });
     appendTitle(rect, `${value} students`);
     svg.append(rect);
   });
 
-  const markerX = margin.left + yourIndex * barWidth + barWidth / 2;
+  if (hasMarker) {
+    const markerX = margin.left + yourIndex * barWidth + barWidth / 2;
+    svg.append(
+      createSvgElement(
+        "text",
+        {
+          x: markerX.toFixed(1),
+          y: margin.top + plotHeight - (plotHeight * bins[yourIndex]) / max - 9,
+          class: "chart-label histogram-marker",
+          "text-anchor": "middle",
+        },
+        "твой XP",
+      ),
+    );
+  }
+
   svg.append(
-    createSvgElement(
-      "text",
-      {
-        x: markerX.toFixed(1),
-        y: margin.top + plotHeight - (plotHeight * bins[yourIndex]) / max - 9,
-        class: "chart-label histogram-marker",
-        "text-anchor": "middle",
-      },
-      "твой XP",
-    ),
-    createSvgElement("text", { x: margin.left, y: height - 12, class: "chart-label", "text-anchor": "start" }, "0 B"),
+    createSvgElement("text", { x: margin.left, y: height - 12, class: "chart-label", "text-anchor": "start" }, "0 XP"),
     createSvgElement(
       "text",
       { x: width - margin.right, y: height - 12, class: "chart-label", "text-anchor": "end" },
-      formatXp(domainMax),
+      formatExactNumber(domainMax),
     ),
     createSvgElement("text", { x: (margin.left + width - margin.right) / 2, y: height - 12, class: "chart-label", "text-anchor": "middle" }, "XP →"),
   );
@@ -749,22 +760,4 @@ function generateSnapshotBins(values, count) {
   }
 
   return bins;
-}
-
-function generateBins(count, pop) {
-  let seed = pop === "batch" ? 29 : 13;
-  const random = () => {
-    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-    return seed / 0x7fffffff;
-  };
-  const peak = count * (pop === "batch" ? 0.26 : 0.3);
-  const spread = count * 0.2;
-  const tailCenter = count * 0.66;
-  const tailSpread = count * 0.12;
-
-  return Array.from({ length: count }, (_, index) => {
-    const bell = Math.exp(-(((index - peak) / spread) ** 2));
-    const tail = Math.exp(-(((index - tailCenter) / tailSpread) ** 2)) * 0.22;
-    return Math.max(0, Math.round((bell * 0.85 + tail + random() * 0.28) * 100));
-  });
 }

@@ -6,7 +6,7 @@ import {
   renderDistributionHistogram,
   renderRadarChart,
   renderXpByProjectChart,
-} from "./charts.js?v=20260628-live-data3";
+} from "./charts.js?v=20260628-live-data7";
 import {
   buildActivityHeatmapData,
   calculateAuditPercentages,
@@ -14,6 +14,7 @@ import {
   calculateTotalXp,
   deriveProfileInsights,
   formatDate,
+  formatExactNumber,
   formatInteger,
   formatNumber,
   formatRawXp,
@@ -25,8 +26,11 @@ import {
   getLastXpTransaction,
   getProjectName,
   groupXpByProject,
-} from "./data.js?v=20260628-live-data3";
-import { LEADERBOARD_SNAPSHOT } from "./leaderboard-snapshot.js?v=20260628-live-data3";
+} from "./data.js?v=20260628-live-data7";
+import {
+  LEADERBOARD_SNAPSHOT,
+  LEADERBOARD_SNAPSHOT_META,
+} from "./leaderboard-snapshot.js?v=20260628-live-data7";
 
 export const elements = {
   root: document.querySelector("#app-root"),
@@ -62,6 +66,7 @@ export const elements = {
   statTotalXpRaw: document.querySelector("#stat-total-xp-raw"),
   statAuditRatio: document.querySelector("#stat-audit-ratio"),
   statProjectsPassed: document.querySelector("#stat-projects-passed"),
+  statProjectsNote: document.querySelector("#stat-projects-note"),
   auditBalanceLabel: document.querySelector("#audit-balance-label"),
   statLatestXp: document.querySelector("#stat-latest-xp"),
   statLatestProject: document.querySelector("#stat-latest-project"),
@@ -138,7 +143,7 @@ const loadingStageContent = {
   signinRequest: ["→", " POST /api/auth/signin ", "ожидание"],
   signinSuccess: ["→", " signin response ", "ожидание"],
   profileQuery: ["→", " query PROFILE_QUERY { user · audits } ", "ожидание"],
-  xpQuery: ["→", " query XP + PROFILE_DETAILS ", "ожидание"],
+  xpQuery: ["→", " query XP + optional enrichment ", "ожидание"],
   normalization: ["→", " normalize live profile data ", "ожидание"],
   render: ["→", " render dashboard ", "ожидание"],
 };
@@ -192,6 +197,13 @@ const publicRadarData = {
     { label: "GraphQL", value: 0 },
   ],
 };
+
+const initialPlaceholderTargets = [...document.querySelectorAll("#dashboard-view [data-placeholder]")];
+
+function formatSnapshotDate(capturedDate) {
+  const [year, month, day] = String(capturedDate || "").split("-");
+  return year && month && day ? `${day}.${month}.${year}` : "";
+}
 
 function setText(element, value) {
   if (element) {
@@ -318,6 +330,48 @@ function markLive(...targets) {
   }
 }
 
+function markSnapshot(meta, ...targets) {
+  const snapshotDate = formatSnapshotDate(meta?.capturedDate);
+  for (const target of targets) {
+    if (!target || !snapshotDate) {
+      continue;
+    }
+
+    target.dataset.provenance = "snapshot";
+    target.dataset.snapshotDate = snapshotDate;
+    target.setAttribute("aria-label", `snapshot от ${snapshotDate}`);
+    if (!target.hasAttribute("tabindex")) {
+      target.setAttribute("tabindex", "0");
+    }
+  }
+}
+
+function clearProvenance(root = elements.dashboardView) {
+  root?.querySelectorAll?.('[data-provenance="snapshot"]').forEach((target) => {
+    target.removeAttribute("data-provenance");
+    target.removeAttribute("data-snapshot-date");
+    if (target.getAttribute("aria-label")?.startsWith("snapshot от ")) {
+      target.removeAttribute("aria-label");
+    }
+    if (!target.hasAttribute("data-placeholder")) {
+      target.removeAttribute("tabindex");
+    }
+  });
+}
+
+function restoreInitialPlaceholders() {
+  for (const target of initialPlaceholderTargets) {
+    if (!target.isConnected) {
+      continue;
+    }
+    target.setAttribute("data-placeholder", "");
+    target.setAttribute("aria-label", "Under construction. Placeholder data.");
+    if (!target.hasAttribute("tabindex")) {
+      target.setAttribute("tabindex", "0");
+    }
+  }
+}
+
 function clearPlaceholderAncestors(...targets) {
   for (const target of targets) {
     markLive(target, target?.closest?.("[data-placeholder]"));
@@ -364,22 +418,23 @@ function renderRankLadder(insights) {
   }
 
   markLive(elements.rankLadder.closest("[data-placeholder]"));
+  markSnapshot(insights.curriculumSnapshotMeta, elements.rankLadder.closest(".wide-card"));
   elements.rankLadder.replaceChildren();
 
   for (const rank of insights.ranks) {
     const item = createEl("div");
     const marker = createEl("i");
-    if (rank.name === insights.currentRank.name) {
+    if (rank.name === insights.currentRank?.name) {
       marker.className = "current";
-    } else if (rank.level <= insights.level) {
+    } else if (Number.isFinite(insights.level) && rank.level <= insights.level) {
       marker.className = "done";
     }
     const name = createEl("strong", "", rank.name);
     const level = createEl("span", "", `≥ LVL ${rank.level}`);
     item.append(marker, name, level);
-    if (rank.name === insights.currentRank.name) {
+    if (rank.name === insights.currentRank?.name) {
       item.append(createEl("em", "", "сейчас"));
-    } else if (rank.level <= insights.level) {
+    } else if (Number.isFinite(insights.level) && rank.level <= insights.level) {
       item.append(createEl("em", "", "пройдено"));
     }
     elements.rankLadder.append(item);
@@ -392,6 +447,7 @@ function renderForecast(insights) {
   }
 
   markLive(elements.forecastTable.closest("[data-placeholder]"));
+  markSnapshot(insights.curriculumSnapshotMeta, elements.forecastTable.closest("[data-provenance]") ?? elements.forecastTable.closest(".wide-card"));
   const rows = insights.timelineRows;
   const currentIndex = Math.max(0, rows.findIndex((row) => row === insights.timelineCurrent));
   const current = rows[currentIndex] ?? null;
@@ -405,7 +461,7 @@ function renderForecast(insights) {
   const levelRow = createEl("div");
   levelRow.append(
     createEl("span", "", "Уровень"),
-    createEl("strong", "", String(insights.level)),
+    createEl("strong", "", Number.isFinite(insights.level) ? String(insights.level) : "—"),
     createEl("span", "", current ? `мин ${current.minLevel} · ожид ${current.expectedLevel}` : "—"),
     createEl("span", "", next ? `мин ${next.minLevel} · ожид ${next.expectedLevel}` : "—"),
   );
@@ -419,8 +475,8 @@ function renderForecast(insights) {
   const rankRow = createEl("div");
   rankRow.append(
     createEl("span", "", "Ранг"),
-    createEl("strong", "", insights.currentRank.name),
-    createEl("span", "", current?.rank || insights.currentRank.name),
+    createEl("strong", "", insights.currentRank?.name || "—"),
+    createEl("span", "", current?.rank || insights.currentRank?.name || "—"),
     createEl("span", "", next?.rank || insights.nextRank?.name || "—"),
   );
   elements.forecastTable.append(levelRow, checkpointRow, rankRow);
@@ -432,6 +488,7 @@ function renderTimeline(insights) {
   }
 
   markLive(elements.timelineRow.closest("[data-placeholder]"));
+  markSnapshot(insights.curriculumSnapshotMeta, elements.timelineRow.closest(".wide-card"));
   elements.timelineRow.replaceChildren();
 
   for (const row of insights.timelineRows) {
@@ -456,19 +513,23 @@ function renderSkillCard(skill) {
   const card = createEl("article", "skill-card ts-card");
   const top = createEl("div");
   top.append(createEl("strong", "", skill.label), createEl("span", "", `${skill.completed}/${skill.total}`));
-  const tier = createEl("em", skill.tier.className, skill.tier.stars ? `${skill.tier.label} ${skill.tier.stars}` : skill.tier.label);
+  const tier = createEl("em", "tier-none", "—");
+  tier.setAttribute("data-placeholder", "");
+  tier.setAttribute("tabindex", "0");
+  tier.setAttribute("aria-label", "Under construction. Placeholder data.");
   const bar = createEl("i", "ts-fill");
   bar.style.width = `${Math.max(0, Math.min(100, skill.value))}%`;
   card.append(top, tier, bar);
   return card;
 }
 
-function renderSkillGrid(container, skills) {
+function renderSkillGrid(container, skills, snapshotMeta = null) {
   if (!container) {
     return;
   }
 
   markLive(container.closest("[data-placeholder]"));
+  markSnapshot(snapshotMeta, container.closest("section"));
   container.replaceChildren();
   for (const skill of skills) {
     container.append(renderSkillCard(skill));
@@ -481,6 +542,7 @@ function renderSkillBreakdown(skills) {
   }
 
   markLive(elements.skillBreakdown.closest("[data-placeholder]"));
+  markSnapshot(currentModel?.insights?.curriculumSnapshotMeta, elements.skillBreakdown.closest(".wide-card"));
   elements.skillBreakdown.replaceChildren();
   for (const skill of skills.slice(0, 6)) {
     const row = createEl("div");
@@ -495,6 +557,22 @@ function renderSkillBreakdown(skills) {
 }
 
 function renderTeamwork(user, insights) {
+  if (!insights.hasGroupsData) {
+    if (elements.teamTags) {
+      elements.teamTags.replaceChildren();
+      const item = createEl("div");
+      item.append(createEl("span", "", "—"), createEl("strong", "", "Нет подтверждённых данных"), createEl("small", "", "optional groups/audits query unavailable"));
+      elements.teamTags.append(item);
+    }
+    if (elements.teamRank) {
+      elements.teamRank.replaceChildren(createEl("p", "", "Нет подтверждённых данных по группам."));
+    }
+    if (elements.friendGrid) {
+      elements.friendGrid.replaceChildren(createEl("p", "", "Нет подтверждённых данных по группам и аудитам."));
+    }
+    return;
+  }
+
   markLive(
     elements.teamTags?.closest("[data-placeholder]"),
     elements.teamRank?.closest("[data-placeholder]"),
@@ -504,8 +582,8 @@ function renderTeamwork(user, insights) {
   if (elements.teamTags) {
     elements.teamTags.replaceChildren();
     const tags = [
-      ["🤝", "Командные проекты", `${formatInteger(insights.uniqueProjectCount)} групп`],
-      ["⚖", "Аудитор", `${formatInteger(insights.auditCount)} проверок`],
+      ["🤝", "Группы", `${formatInteger(insights.uniqueProjectCount)} groupId`],
+      ["⚖", "Аудиты", `${formatInteger(insights.auditCount)} audit records`],
       ["⚡", "Активность", `${formatInteger(insights.heatmapActiveDays ?? 0)} активных дней`],
     ];
     for (const [icon, title, note] of tags) {
@@ -516,29 +594,27 @@ function renderTeamwork(user, insights) {
   }
 
   if (elements.teamRank) {
-    const partnerCount = insights.uniquePartnerCount;
-    const nextTarget = partnerCount >= 50 ? 100 : 50;
-    const percent = Math.min(100, Math.round((partnerCount / nextTarget) * 100));
+    const captainCount = insights.uniquePartnerCount;
     elements.teamRank.replaceChildren();
     const title = createEl("div", "team-rank-title");
     title.append(
-      createEl("span", "team-rank-emoji", partnerCount >= 30 ? "🥷" : "🤝"),
+      createEl("span", "team-rank-emoji", "🤝"),
       (() => {
         const wrap = createEl("div");
         wrap.append(
-          createEl("strong", "", partnerCount >= 30 ? "Network Ninja" : "Byte Buddy"),
-          createEl("span", "", `работал минимум с ${formatInteger(partnerCount)} разными капитанами групп`),
+          createEl("strong", "", "Капитаны групп"),
+          createEl("span", "", "unique group.captainId из доступных group_user rows"),
         );
         return wrap;
       })(),
     );
     const score = createEl("div", "team-rank-score");
-    score.append(createEl("b", "", formatInteger(partnerCount)), createEl("span", "", "партнёров"));
+    score.append(createEl("b", "", formatInteger(captainCount)), createEl("span", "", "капитанов"));
     const bar = createEl("i");
     const fill = createEl("span", "ts-fill");
-    fill.style.width = `${percent}%`;
+    fill.style.width = "0%";
     bar.append(fill);
-    elements.teamRank.append(title, score, bar, createEl("p", "", `Следующий порог: ${formatInteger(nextTarget)} партнёров`));
+    elements.teamRank.append(title, score, bar, createEl("p", "", "Полный список участников групп API не подтверждён."));
   }
 
   if (elements.friendGrid) {
@@ -586,16 +662,22 @@ function maybeRunProfileCountUp(model) {
   }
 
   profileCountUpDone = true;
-  animateNumber(elements.statTotalXp, model.totalXp, formatXp, 0);
+  animateNumber(elements.statTotalXp, model.totalXp, formatExactNumber, 0);
   animateNumber(elements.statAuditRatio, model.user.auditRatio, formatNumber, 2);
-  animateNumber(elements.levelValue, model.insights.level, String, 0);
-  animateNumber(elements.statProjectsPassed, model.insights.doneProgressCount, String, 0);
-  animateRing(elements.levelRing, model.insights.rankProgress);
+  if (Number.isFinite(model.insights.level)) {
+    animateNumber(elements.levelValue, model.insights.level, String, 0);
+  }
+  if (model.insights.hasProgressData) {
+    animateNumber(elements.statProjectsPassed, model.insights.doneProgressCount, String, 0);
+  } else {
+    setText(elements.statProjectsPassed, "—");
+  }
+  animateRing(elements.levelRing, model.insights.rankProgress ?? 0);
 }
 
 function buildModel(user, transactions, details = null) {
   const insights = deriveProfileInsights(user, details ?? {}, transactions);
-  const totalXp = insights.eventXpTotal || calculateTotalXp(transactions);
+  const totalXp = Number.isFinite(insights.eventXpTotal) && insights.eventXpTotal > 0 ? insights.eventXpTotal : calculateTotalXp(transactions);
   const cumulativeXp = calculateCumulativeXp(transactions);
   const projects = groupXpByProject(transactions);
   const latest = getLastXpTransaction(transactions);
@@ -625,34 +707,7 @@ function radarAxes(skills, limit = 8) {
 }
 
 function buildCompareData(model) {
-  const entries = model.cumulativeXp.filter((entry) => entry.transaction.date);
-  const byMonth = new Map();
-
-  for (const entry of entries) {
-    const date = entry.transaction.date;
-    const label = new Intl.DateTimeFormat("ru", { month: "short" }).format(date).replace(".", "");
-    byMonth.set(`${date.getFullYear()}-${date.getMonth()}`, {
-      label,
-      value: Math.round(entry.cumulative / 1000),
-    });
-  }
-
-  const points = [...byMonth.values()].slice(-14);
-  const months = points.map((point) => point.label);
-  const you = points.map((point) => point.value);
-  const snapshotValues = leaderboardStudents.map((student) => student.xp).filter(Number.isFinite);
-  const averageSnapshotXp =
-    snapshotValues.length > 0
-      ? snapshotValues.reduce((sum, value) => sum + value, 0) / snapshotValues.length
-      : model.totalXp;
-  const cohort = you.map((_, index) => Math.round((averageSnapshotXp / 1000) * ((index + 1) / Math.max(1, you.length))));
-
-  return {
-    months: months.length > 0 ? months : ["—"],
-    you: you.length > 0 ? you : [0],
-    cohort: cohort.length > 0 ? cohort : [0],
-    title: "Current XP versus leaderboard snapshot average",
-  };
+  return null;
 }
 
 function renderDashboardCharts(model = null) {
@@ -661,7 +716,7 @@ function renderDashboardCharts(model = null) {
       renderRadarChart(elements.statsSkillsRadar, publicRadarData.top, "Skills radar");
       renderRadarChart(elements.techRadar, publicRadarData.top, "Technical skills radar");
       renderRadarChart(elements.technologyRadar, publicRadarData.all, "Technologies radar");
-      renderCompareChart(elements.compareChart);
+      renderCompareChart(elements.compareChart, null);
       renderedStaticCharts.add("radars");
     }
     renderDistribution();
@@ -678,26 +733,21 @@ function renderDashboardCharts(model = null) {
   renderRadarChart(elements.techRadar, techAxes, "Live technical skills radar");
   renderRadarChart(elements.technologyRadar, technologyAxes, "Live technologies radar");
   renderCompareChart(elements.compareChart, buildCompareData(model));
-  markLive(
-    elements.statsSkillsRadar?.closest("[data-placeholder]"),
-    elements.techRadar?.closest("[data-placeholder]"),
-    elements.technologyRadar?.closest("[data-placeholder]"),
-    elements.compareChart?.closest("[data-placeholder]"),
-    elements.distributionChart?.closest("[data-placeholder]"),
-  );
+  if (model.insights.hasProgressData) {
+    markLive(
+      elements.statsSkillsRadar?.closest("[data-placeholder]"),
+      elements.techRadar?.closest("[data-placeholder]"),
+      elements.technologyRadar?.closest("[data-placeholder]"),
+    );
+    markSnapshot(
+      model.insights.curriculumSnapshotMeta,
+      elements.statsSkillsRadar?.closest(".wide-card"),
+      elements.techRadar?.closest(".wide-card"),
+      elements.technologyRadar?.closest(".wide-card"),
+    );
+  }
   if (elements.compareLegend) {
-    const snapshotValues = leaderboardStudents.map((student) => student.xp).filter(Number.isFinite);
-    const averageSnapshotXp =
-      snapshotValues.length > 0
-        ? snapshotValues.reduce((sum, value) => sum + value, 0) / snapshotValues.length
-        : 0;
-    const you = createEl("span");
-    const youMarker = createEl("i", "solid");
-    you.append(youMarker, document.createTextNode(`ты · ${formatXp(model.totalXp)}`));
-    const cohort = createEl("span");
-    const cohortMarker = createEl("i", "dashed");
-    cohort.append(cohortMarker, document.createTextNode(`snapshot · ${formatXp(averageSnapshotXp)}`));
-    elements.compareLegend.replaceChildren(you, cohort);
+    elements.compareLegend.replaceChildren(createEl("span", "", "нет подтверждённой исторической серии"));
   }
   renderDistribution(model);
   renderLeaderboard();
@@ -710,17 +760,30 @@ function renderDistribution(model = currentModel) {
   }
 
   const bins = Number(elements.histogramBins.value);
-  const currentBatch = model?.insights?.batch ?? "";
+  const currentSnapshotStudent = model
+    ? leaderboardStudents.find((student) => student.login.toLowerCase() === model.user.login.toLowerCase())
+    : null;
+  const currentBatch = model?.insights?.batch || currentSnapshotStudent?.batch || "";
+  const batchButton = elements.distributionButtons.find((button) => button.dataset.distributionMode === "batch");
+  if (batchButton) {
+    batchButton.textContent = currentBatch || "Batch";
+  }
   const values =
     distributionMode === "batch"
       ? leaderboardStudents.filter((student) => student.batch === currentBatch).map((student) => student.xp)
       : leaderboardStudents.map((student) => student.xp);
+  const markerValue =
+    currentSnapshotStudent && Number(currentSnapshotStudent.xp) === Number(model?.totalXp)
+      ? model.totalXp
+      : null;
   setText(elements.histogramBinsLabel, String(bins));
   setActiveButton(elements.distributionButtons, distributionMode, "distributionMode");
   renderDistributionHistogram(elements.distributionChart, bins, distributionMode, {
     values,
-    markerValue: model?.totalXp,
+    markerValue,
   });
+  markLive(elements.distributionChart.closest("[data-placeholder]"));
+  markSnapshot(LEADERBOARD_SNAPSHOT_META, elements.distributionChart.closest(".wide-card"));
 }
 
 function renderPublicRadar(model = currentModel) {
@@ -738,7 +801,15 @@ function renderPublicRadar(model = currentModel) {
 }
 
 function formatLeaderboardXp(value) {
-  return formatXp(value).replace(/\s/g, " ");
+  return formatExactNumber(value);
+}
+
+function formatLeaderboardHours(value) {
+  const seconds = Number(value);
+  if (!Number.isFinite(seconds)) {
+    return "—";
+  }
+  return `${Math.round(seconds / 3600)}ч`;
 }
 
 function getTrendClass(trend) {
@@ -772,10 +843,22 @@ function renderLeaderboard() {
   const currentLogin = currentModel?.user?.login?.toLowerCase() ?? "";
   const sorted = [...leaderboardStudents].sort((left, right) => left.rank - right.rank || right.xp - left.xp);
   const filtered = boardFilter === "all" ? sorted : sorted.filter((student) => student.batch === boardFilter);
-  const label = boardFilter === "all" ? "все потоки" : boardFilter;
+  const label = boardFilter === "all" ? "Все batch" : boardFilter;
   setText(elements.boardCountTitle, `${label} · ${filtered.length} студентов`);
   setText(elements.boardCountNote, `Статичный snapshot dashboard · показано: ${filtered.length}`);
   setActiveButton(elements.boardFilterButtons, boardFilter, "boardFilter");
+  markLive(
+    elements.boardFilterButtons[0]?.closest("[data-placeholder]"),
+    elements.boardCountNote,
+    elements.leaderboardRows.closest("[data-placeholder]"),
+  );
+  markSnapshot(
+    LEADERBOARD_SNAPSHOT_META,
+    elements.boardCountTitle,
+    elements.boardFilterButtons[0]?.closest(".chip-row"),
+    elements.boardCountNote,
+    elements.leaderboardRows.closest(".leaderboard-card"),
+  );
   elements.leaderboardRows.replaceChildren();
 
   filtered.forEach((student) => {
@@ -789,7 +872,7 @@ function renderLeaderboard() {
 
     const rankCell = document.createElement("span");
     rankCell.className = `leader-rank${rank <= 3 ? ` rank-${rank}` : ""}`;
-    rankCell.textContent = `#${rank}`;
+    rankCell.textContent = String(rank);
 
     const avatar = document.createElement("span");
     avatar.className = "leader-avatar";
@@ -819,6 +902,9 @@ function renderLeaderboard() {
     const xp = document.createElement("span");
     xp.textContent = formatLeaderboardXp(student.xp);
 
+    const hours = document.createElement("span");
+    hours.textContent = formatLeaderboardHours(student.hoursInRange);
+
     const project = document.createElement("span");
     project.textContent = student.project;
 
@@ -826,7 +912,7 @@ function renderLeaderboard() {
     trend.className = getTrendClass(student.trend);
     trend.textContent = formatLeaderboardTrend(student);
 
-    row.append(rankCell, avatar, person, level, xp, project, trend);
+    row.append(rankCell, avatar, person, level, xp, hours, project, trend);
     elements.leaderboardRows.append(row);
   });
 }
@@ -937,17 +1023,21 @@ export function updateLoadingStage(key, state, status) {
 export function resetDashboard() {
   profileCountUpDone = false;
   currentModel = null;
+  document.dispatchEvent(new CustomEvent("under-construction-hide"));
+  clearProvenance();
+  restoreInitialPlaceholders();
   setText(elements.headerAvatar, "—");
   setText(elements.profileFirstName, "—");
   setText(elements.profileHandle, "@—");
   setText(elements.profileUserId, "#—");
-  setText(elements.levelValue, "0");
+  setText(elements.levelValue, "—");
   setText(elements.profileRankPill, "—");
   setText(elements.levelNextLabel, "до LVL —");
   setText(elements.levelNextNote, "нет данных");
-  setText(elements.statProjectsPassed, "0");
-  setText(elements.statTotalXp, "0 B");
-  setText(elements.statTotalXpRaw, "0 bytes");
+  setText(elements.statProjectsPassed, "—");
+  setText(elements.statProjectsNote, "—");
+  setText(elements.statTotalXp, "—");
+  setText(elements.statTotalXpRaw, "—");
   setText(elements.statAuditRatio, "0");
   setText(elements.auditBigRatio, "0");
   setText(elements.statLatestXp, "Нет данных");
@@ -962,8 +1052,8 @@ export function resetDashboard() {
   setText(elements.publicHandle, "@—");
   setText(elements.publicMeta, "· —");
   setText(elements.publicAvailability, "—");
-  setText(elements.publicLevel, "0");
-  setText(elements.publicTotalXp, "0 B");
+  setText(elements.publicLevel, "—");
+  setText(elements.publicTotalXp, "—");
   setText(elements.publicAuditRatio, "0");
   setText(elements.currentRankValue, "—");
   setText(elements.nextRankLabel, "—");
@@ -996,7 +1086,7 @@ export function renderDashboard(user, transactions, details = null) {
   const displayName = user.fullName || model.insights.eventUser?.name || user.login;
   const latest = model.latest;
   const latestProject = latest ? getProjectName(latest) : "Нет проекта";
-  const latestXp = latest ? `${latest.amount >= 0 ? "+" : ""}${formatXp(latest.amount)}` : "Нет данных";
+  const latestXp = latest ? `${latest.amount >= 0 ? "+" : ""}${formatExactNumber(latest.amount)} XP` : "Нет данных";
   const latestDate = latest ? formatDate(latest.date) : "Нет даты";
   const auditMeta = getAuditMeta(user.auditRatio);
   const auditPercentages = calculateAuditPercentages(user.totalUp, user.totalDown);
@@ -1010,13 +1100,18 @@ export function renderDashboard(user, transactions, details = null) {
   setText(elements.profileFirstName, firstName);
   setText(elements.profileHandle, `@${user.login}`);
   setText(elements.profileUserId, `#${user.id}`);
-  setText(elements.profileRankPill, insights.currentRank.name);
-  setText(elements.levelNextLabel, insights.nextRank ? `до ${insights.nextRank.name}` : "максимальный ранг");
-  setText(elements.levelNextNote, insights.nextRank ? `${formatLevelDistance(insights.nextRank, insights.level)} до следующего ранга` : "все ранги открыты");
-  setText(elements.levelValue, String(insights.level));
-  setText(elements.statTotalXp, formatXp(model.totalXp));
+  const rankName = insights.currentRank?.name ?? "—";
+  setText(elements.profileRankPill, rankName);
+  setText(elements.levelNextLabel, insights.nextRank ? `до ${insights.nextRank.name}` : insights.currentRank ? "максимальный ранг" : "—");
+  setText(elements.levelNextNote, insights.nextRank && Number.isFinite(insights.level) ? `${formatLevelDistance(insights.nextRank, insights.level)} до следующего ранга` : "нет данных");
+  setText(elements.levelValue, Number.isFinite(insights.level) ? String(insights.level) : "—");
+  setText(elements.statTotalXp, formatExactNumber(model.totalXp));
   setText(elements.statTotalXpRaw, formatRawXp(model.totalXp));
-  setText(elements.statProjectsPassed, String(insights.doneProgressCount));
+  setText(elements.statProjectsPassed, insights.hasProgressData ? String(insights.doneProgressCount) : "—");
+  setText(
+    elements.statProjectsNote,
+    insights.hasProgressData ? `${formatInteger(insights.recentDoneProgressCount)} за 7 дней` : "—",
+  );
   setText(elements.statAuditRatio, formatNumber(user.auditRatio));
   setText(elements.auditBigRatio, formatNumber(user.auditRatio));
   setText(elements.auditBalanceLabel, auditMeta.status.toLowerCase());
@@ -1029,23 +1124,23 @@ export function renderDashboard(user, transactions, details = null) {
   setText(elements.auditDownValue, formatXp(user.totalDown));
   setText(elements.infoLogin, user.login);
   setText(elements.infoId, `#${user.id}`);
-  setText(elements.profileCampus, user.campus || insights.campus);
-  setText(elements.profileCohort, insights.batch);
+  setText(elements.profileCampus, user.campus || insights.campus || "—");
+  setText(elements.profileCohort, insights.batch || "—");
   setText(elements.activitySummary, `${model.heatmap.activeDays} активных дней · ${model.heatmap.weeks} недель · ${model.heatmap.period}`);
   setText(elements.radialRatio, formatNumber(user.auditRatio));
   setText(elements.publicAvatar, initials);
   setText(elements.publicName, displayName);
   setText(elements.publicHandle, `@${user.login}`);
-  setText(elements.publicMeta, `· ${insights.batch} · ${user.campus || insights.campus}`);
-  setText(elements.publicAvailability, insights.activeGroups.length > 0 ? "В работе над проектами" : "Доступен для команды");
-  setText(elements.publicLevel, String(insights.level));
-  setText(elements.publicTotalXp, formatXp(model.totalXp));
+  setText(elements.publicMeta, `· ${insights.batch || "—"} · ${user.campus || insights.campus || "—"}`);
+  setText(elements.publicAvailability, "—");
+  setText(elements.publicLevel, Number.isFinite(insights.level) ? String(insights.level) : "—");
+  setText(elements.publicTotalXp, formatExactNumber(model.totalXp));
   setText(elements.publicAuditRatio, formatNumber(user.auditRatio));
-  setText(elements.currentRankValue, insights.currentRank.name);
-  setText(elements.nextRankLabel, insights.nextRank ? `до ранга ${insights.nextRank.name}` : "ранги завершены");
-  setText(elements.nextRankDistance, insights.nextRank ? formatLevelDistance(insights.nextRank, insights.level) : "—");
-  setText(elements.checkpointValue, currentTimeline ? String(currentTimeline.checkpointLevel) : "—");
-  setText(elements.checkpointNote, currentTimeline ? `ожидаемый checkpoint · ${currentTimeline.label}` : "нет данных timeline");
+  setText(elements.currentRankValue, rankName);
+  setText(elements.nextRankLabel, insights.nextRank ? `до ранга ${insights.nextRank.name}` : insights.currentRank ? "ранги завершены" : "—");
+  setText(elements.nextRankDistance, insights.nextRank && Number.isFinite(insights.level) ? formatLevelDistance(insights.nextRank, insights.level) : "—");
+  setText(elements.checkpointValue, "—");
+  setText(elements.checkpointNote, "нет подтверждённых данных");
   setText(elements.lastSkillValue, insights.latestSkill);
   setText(
     elements.lastSkillNote,
@@ -1059,7 +1154,7 @@ export function renderDashboard(user, transactions, details = null) {
   elements.auditUpBar.style.width = `${auditPercentages.upPercent}%`;
   elements.auditDownBar.style.width = `${auditPercentages.downPercent}%`;
   if (elements.nextRankProgress) {
-    elements.nextRankProgress.style.width = `${insights.rankProgress}%`;
+    elements.nextRankProgress.style.width = `${insights.rankProgress ?? 0}%`;
   }
   if (elements.progressWarning) {
     const icon = elements.progressWarning.querySelector("span");
@@ -1068,26 +1163,57 @@ export function renderDashboard(user, transactions, details = null) {
       icon.textContent = insights.isBehindTimeline ? "⚠" : "✓";
     }
     if (strong) {
-      strong.textContent = insights.isBehindTimeline && currentTimeline
+      strong.textContent = Number.isFinite(insights.level) && insights.isBehindTimeline && currentTimeline
         ? `Текущий уровень (${insights.level}) ниже минимально ожидаемого (${currentTimeline.minLevel}) для ${currentTimeline.label}.`
-        : `Текущий уровень (${insights.level}) соответствует открытым данным timeline.`;
+        : currentTimeline && Number.isFinite(insights.level)
+          ? `Текущий уровень (${insights.level}) соответствует timeline для ${currentTimeline.label}.`
+          : "Нет подтверждённых данных timeline.";
     }
   }
 
+  const liveTargets = [
+    user.campus ? elements.profileCampus : null,
+    insights.batch ? elements.profileCohort : null,
+    user.campus || insights.batch ? elements.publicMeta : null,
+  ];
+
+  if (insights.hasProgressData) {
+    liveTargets.push(elements.statProjectsPassed, elements.lastSkillValue);
+  }
+
+  if (insights.hasLiveLevel) {
+    liveTargets.push(
+      elements.profileRankPill,
+      elements.levelNextLabel,
+      elements.currentRankCard,
+      elements.publicLevel,
+    );
+  }
+
+  if (insights.hasLiveLevel && currentTimeline) {
+    liveTargets.push(elements.progressWarning);
+  }
+
   clearPlaceholderAncestors(
-    elements.profileRankPill,
-    elements.levelNextLabel,
-    elements.statProjectsPassed,
-    elements.currentRankCard,
-    elements.checkpointValue,
-    elements.lastSkillValue,
-    elements.profileCampus,
-    elements.profileCohort,
-    elements.publicMeta,
-    elements.publicAvailability,
-    elements.publicLevel,
-    elements.progressWarning,
+    ...liveTargets,
   );
+
+  if (insights.hasLiveLevel) {
+    markSnapshot(
+      insights.curriculumSnapshotMeta,
+      elements.profileRankPill,
+      elements.levelNextLabel?.closest(".level-wrap"),
+      elements.currentRankCard,
+      currentTimeline ? elements.progressWarning : null,
+    );
+  }
+
+  if (insights.hasProgressData) {
+    markSnapshot(
+      insights.curriculumSnapshotMeta,
+      elements.lastSkillValue?.closest(".compact-card"),
+    );
+  }
 
   renderActivityHeatmap(elements.activityHeatmap, model.heatmap);
   renderCumulativeXpChart(elements.cumulativeChart, model.cumulativeXp, getProjectName);
@@ -1096,12 +1222,13 @@ export function renderDashboard(user, transactions, details = null) {
   renderRankLadder(insights);
   renderForecast(insights);
   renderTimeline(insights);
-  renderSkillGrid(elements.technicalSkillGrid, insights.technicalSkills);
-  renderSkillGrid(elements.technologySkillGrid, insights.technologySkills);
-  renderSkillBreakdown(insights.topSkills);
+  if (insights.hasProgressData) {
+    renderSkillGrid(elements.technicalSkillGrid, insights.technicalSkills, insights.curriculumSnapshotMeta);
+    renderSkillGrid(elements.technologySkillGrid, insights.technologySkills, insights.curriculumSnapshotMeta);
+    renderSkillBreakdown(insights.topSkills);
+  }
   renderTeamwork(user, insights);
   renderDashboardCharts(model);
-  markLive(...document.querySelectorAll("#dashboard-view [data-placeholder]"));
 
   maybeRunProfileCountUp(model);
 }

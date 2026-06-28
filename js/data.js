@@ -1,8 +1,16 @@
-import { CURRICULUM_SNAPSHOT } from "./curriculum-snapshot.js?v=20260628-live-data3";
+import {
+  CURRICULUM_SNAPSHOT,
+  CURRICULUM_SNAPSHOT_META,
+} from "./curriculum-snapshot.js?v=20260628-live-data7";
 
 export function toFiniteNumber(value, fallback = 0) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
+}
+
+function toOptionalNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
 }
 
 export function parseValidDate(value) {
@@ -115,7 +123,7 @@ export function normalizeUser(rawUser) {
     firstName,
     lastName,
     fullName,
-    campus: typeof user.campus === "string" && user.campus.trim() ? user.campus : "astanahub",
+    campus: typeof user.campus === "string" && user.campus.trim() ? user.campus : "",
     auditRatio: toFiniteNumber(user.auditRatio),
     totalUp: toFiniteNumber(user.totalUp),
     totalDown: toFiniteNumber(user.totalDown),
@@ -204,6 +212,10 @@ function aggregateCount(payload) {
 
 export function normalizeProfileDetails(rawDetails = {}) {
   const eventUser = normalizeArray(rawDetails.event_user)[0] ?? null;
+  const loadedSources =
+    rawDetails.__loaded && typeof rawDetails.__loaded === "object" && !Array.isArray(rawDetails.__loaded)
+      ? { ...rawDetails.__loaded }
+      : {};
   const labels = normalizeArray(rawDetails.label_user).map((label) => ({
     id: label?.id ?? null,
     userId: label?.userId ?? null,
@@ -215,6 +227,7 @@ export function normalizeProfileDetails(rawDetails = {}) {
   const curriculumObjects = normalizeArray(rawDetails.curriculumObjects).map(normalizeObjectRecord).filter(Boolean);
 
   return {
+    sources: loadedSources,
     eventUser: eventUser
       ? {
           id: eventUser.id ?? null,
@@ -222,8 +235,8 @@ export function normalizeProfileDetails(rawDetails = {}) {
           eventId: eventUser.eventId ?? null,
           login: typeof eventUser.userLogin === "string" ? eventUser.userLogin : "",
           name: typeof eventUser.userName === "string" ? eventUser.userName.trim() : "",
-          level: toFiniteNumber(eventUser.level),
-          auditRatio: toFiniteNumber(eventUser.userAuditRatio),
+          level: toOptionalNumber(eventUser.level),
+          auditRatio: toOptionalNumber(eventUser.userAuditRatio),
           createdAt: eventUser.createdAt ?? null,
           xp:
             eventUser.xp && typeof eventUser.xp === "object"
@@ -341,6 +354,10 @@ const numberFormatter = new Intl.NumberFormat(undefined, {
   maximumFractionDigits: 2,
 });
 
+const preciseIntegerFormatter = new Intl.NumberFormat("ru-RU", {
+  maximumFractionDigits: 0,
+});
+
 const dateFormatter = new Intl.DateTimeFormat(undefined, {
   year: "numeric",
   month: "short",
@@ -388,6 +405,10 @@ export function formatInteger(value) {
   return integerFormatter.format(Number.isFinite(value) ? value : 0);
 }
 
+export function formatExactNumber(value) {
+  return preciseIntegerFormatter.format(Number.isFinite(value) ? value : 0);
+}
+
 export function formatCompactNumber(value) {
   const safe = Number.isFinite(value) ? value : 0;
   if (Math.abs(safe) >= 10000) {
@@ -414,7 +435,7 @@ export function formatXp(value) {
 
 export function formatRawXp(value) {
   const safe = Number.isFinite(value) ? value : 0;
-  return `${integerFormatter.format(safe)} bytes`;
+  return `${preciseIntegerFormatter.format(safe)} XP`;
 }
 
 export function formatDate(date) {
@@ -781,12 +802,38 @@ function findModuleObject(objects, campus = "astanahub") {
   );
 }
 
+function objectsInProgram(objects, programPath) {
+  if (!programPath) {
+    return [];
+  }
+
+  const prefix = `${programPath}/`;
+  return objects.filter((object) => object.path === programPath || object.path.startsWith(prefix));
+}
+
 function monthFromProgramStart(eventStartAt, monthIndex) {
-  const start = parseValidDate(eventStartAt) ?? new Date();
+  const start = parseValidDate(eventStartAt);
+  if (!start) {
+    return "—";
+  }
+
   const date = new Date(start.getFullYear(), start.getMonth() + Number(monthIndex || 1) - 1, 1);
   return new Intl.DateTimeFormat("ru", { month: "short", year: "2-digit" })
     .format(date)
     .replace(".", "");
+}
+
+function getProgramMonthIndex(programStartAt, now = new Date()) {
+  const start = parseValidDate(programStartAt);
+  if (!start) {
+    return null;
+  }
+
+  const monthIndex =
+    (now.getFullYear() - start.getFullYear()) * 12 +
+    (now.getMonth() - start.getMonth()) +
+    1;
+  return Math.max(1, monthIndex);
 }
 
 function getRankDefinitions(moduleObject) {
@@ -814,7 +861,7 @@ function getLevelDefinitions(moduleObject) {
     : [];
 }
 
-function getTimelineRows(moduleObject, eventStartAt, currentLevel) {
+function getTimelineRows(moduleObject, eventStartAt, programMonthIndex) {
   const timeline = moduleObject?.attrs?.timeline;
   if (!Array.isArray(timeline)) {
     return [];
@@ -828,14 +875,12 @@ function getTimelineRows(moduleObject, eventStartAt, currentLevel) {
     checkpointLevel: toFiniteNumber(row?.checkpointLevel),
     rank: typeof row?.rank === "string" ? row.rank : "",
     notes: typeof row?.notes === "string" ? row.notes : "",
-    isCurrent:
-      toFiniteNumber(row?.minLevel) <= currentLevel &&
-      currentLevel < toFiniteNumber(row?.expectedLevel, Number.POSITIVE_INFINITY),
+    isCurrent: programMonthIndex !== null && toFiniteNumber(row?.month) === programMonthIndex,
   }));
 }
 
-function getCurrentTimelineRow(timelineRows, now = new Date()) {
-  if (timelineRows.length === 0) {
+function getCurrentTimelineRow(timelineRows, programMonthIndex) {
+  if (timelineRows.length === 0 || programMonthIndex === null) {
     return null;
   }
 
@@ -844,26 +889,15 @@ function getCurrentTimelineRow(timelineRows, now = new Date()) {
     return current;
   }
 
-  const monthIndex = now.getMonth();
-  return timelineRows[Math.min(timelineRows.length - 1, Math.max(0, monthIndex))] ?? timelineRows.at(-1);
+  if (programMonthIndex < timelineRows[0].month) {
+    return timelineRows[0];
+  }
+
+  return timelineRows.at(-1) ?? null;
 }
 
-function getSkillTier(completed, total) {
-  if (completed <= 0 || total <= 0) {
-    return { label: "нет прогресса", className: "tier-none", stars: "" };
-  }
-
-  const percent = (completed / total) * 100;
-  if (percent >= 60) {
-    return { label: "Master Hacker", className: "tier-master", stars: "★★★★" };
-  }
-  if (percent >= 35) {
-    return { label: "Script Wizard", className: "tier-script", stars: "★★★" };
-  }
-  if (percent >= 10) {
-    return { label: "Bug Squasher", className: "tier-bug", stars: "★★☆" };
-  }
-  return { label: "Code Explorer", className: "tier-code", stars: "★☆☆" };
+function getSkillTier() {
+  return null;
 }
 
 function buildSkillStats(objects, completedProgress) {
@@ -941,6 +975,10 @@ function getBestFriend(groups, currentUserId) {
 }
 
 export function deriveProfileInsights(user, details, transactions) {
+  const hasEventData = Boolean(details?.sources?.event);
+  const hasProgressData = Boolean(details?.sources?.progress);
+  const hasGroupsData = Boolean(details?.sources?.groups);
+  const hasCurriculumLiveData = Boolean(details?.sources?.curriculum);
   const progressObjects = [
     ...(details?.progress ?? []).map((row) => row.object),
     ...(details?.allDoneProgress ?? []).map((row) => row.object),
@@ -953,37 +991,46 @@ export function deriveProfileInsights(user, details, transactions) {
     ...CURRICULUM_SNAPSHOT,
   ]);
   const moduleObject = findModuleObject(objects, user?.campus);
-  const level = toFiniteNumber(details?.eventUser?.level, 0);
+  const programObjects = objectsInProgram(objects, moduleObject?.path);
+  const hasLiveLevel = Number.isFinite(details?.eventUser?.level);
+  const level = hasLiveLevel ? details.eventUser.level : null;
   const ranks = getRankDefinitions(moduleObject);
   const levels = getLevelDefinitions(moduleObject);
-  const currentRank =
-    [...ranks].reverse().find((rank) => rank.level <= level) ??
-    ranks[0] ?? { name: "Rank unavailable", level: 0, milestone: "" };
-  const nextRank = ranks.find((rank) => rank.level > level) ?? null;
-  const rankProgress = nextRank
+  const currentRank = hasLiveLevel ? [...ranks].reverse().find((rank) => rank.level <= level) ?? null : null;
+  const nextRank = hasLiveLevel ? ranks.find((rank) => rank.level > level) ?? null : null;
+  const rankProgress = currentRank && nextRank
     ? Math.round(((level - currentRank.level) / Math.max(1, nextRank.level - currentRank.level)) * 100)
-    : 100;
-  const timelineRows = getTimelineRows(moduleObject, details?.eventUser?.createdAt, level);
-  const timelineCurrent = getCurrentTimelineRow(timelineRows);
-  const isBehindTimeline = timelineCurrent ? level < timelineCurrent.minLevel : false;
-  const batch = details?.labels?.find((label) => /^Batch\s+/i.test(label.labelName))?.labelName ?? "Batch unavailable";
-  const doneProgress = details?.progress?.filter((row) => row.isDone) ?? [];
-  const allDoneProgress = details?.allDoneProgress ?? [];
-  const recentDoneProgress = doneProgress.filter((row) => {
+    : currentRank && !nextRank
+      ? 100
+      : null;
+  const currentEvent = details?.events?.find((event) => event.eventId === details?.eventUser?.eventId) ?? null;
+  const programStartAt = details?.eventUser?.createdAt ?? currentEvent?.event?.startAt ?? null;
+  const programMonthIndex = getProgramMonthIndex(programStartAt);
+  const timelineRows = getTimelineRows(moduleObject, programStartAt, programMonthIndex);
+  const timelineCurrent = getCurrentTimelineRow(timelineRows, programMonthIndex);
+  const isBehindTimeline = hasLiveLevel && timelineCurrent ? level < timelineCurrent.minLevel : false;
+  const batch = details?.labels?.find((label) =>
+    label.eventId === details?.eventUser?.eventId && /^Batch\s+/i.test(label.labelName),
+  )?.labelName ?? "";
+  const doneProgress = hasProgressData ? details?.progress?.filter((row) => row.isDone) ?? [] : [];
+  const doneProjectProgress = doneProgress.filter((row) => row.object?.type === "project");
+  const doneProjectRows = mergeProgressRows(doneProjectProgress);
+  const allDoneProgress = hasProgressData ? details?.allDoneProgress ?? [] : [];
+  const recentDoneProgress = doneProjectRows.filter((row) => {
     const time = row.updatedDate?.getTime();
     if (!Number.isFinite(time)) {
       return false;
     }
     return Date.now() - time <= 7 * 24 * 60 * 60 * 1000;
   });
-  const latestProgress = details?.progress?.[0] ?? null;
+  const latestProgress = hasProgressData ? details?.progress?.[0] ?? null : null;
   const completedProgressForSkills = mergeProgressRows([...allDoneProgress, ...doneProgress]);
   const latestCompleted = allDoneProgress[0] ?? doneProgress[0] ?? null;
-  const latestBaseSkills = getBaseSkillsForProgress(latestCompleted, objects);
+  const latestBaseSkills = getBaseSkillsForProgress(latestCompleted, programObjects);
   const latestSkillKey = isPlainObject(latestBaseSkills)
     ? Object.entries(latestBaseSkills).sort((left, right) => toFiniteNumber(right[1]) - toFiniteNumber(left[1]))[0]?.[0]
     : null;
-  const skillStats = buildSkillStats(objects, completedProgressForSkills);
+  const skillStats = hasProgressData ? buildSkillStats(programObjects, completedProgressForSkills) : [];
   const technicalSkills = pickSkills(skillStats.filter((skill) => skill.group === "technical"), TECHNICAL_SKILL_KEYS, 10);
   const technologySkills = pickSkills(skillStats.filter((skill) => skill.group === "technology"), TECHNOLOGY_SKILL_KEYS, 10);
   const activeGroups = (details?.groups ?? []).filter((group) =>
@@ -998,6 +1045,10 @@ export function deriveProfileInsights(user, details, transactions) {
   const bestFriend = getBestFriend(details?.groups ?? [], user.id);
 
   return {
+    hasEventData,
+    hasProgressData,
+    hasGroupsData,
+    hasCurriculumLiveData,
     eventId: details?.eventUser?.eventId ?? null,
     eventUser: details?.eventUser ?? null,
     eventXpTotal: details?.eventXpTotal ?? calculateTotalXp(transactions),
@@ -1006,16 +1057,21 @@ export function deriveProfileInsights(user, details, transactions) {
     allXpCount: details?.allXpCount ?? transactions.length,
     level,
     batch,
-    campus: user?.campus || "astanahub",
+    campus: user?.campus || "",
+    hasLiveLevel,
+    programStartAt,
+    programMonthIndex,
+    usesCurriculumSnapshot: programObjects.length > 0,
+    curriculumSnapshotMeta: CURRICULUM_SNAPSHOT_META,
     ranks,
     levels,
     currentRank,
     nextRank,
-    rankProgress: Math.max(0, Math.min(100, rankProgress)),
+    rankProgress: rankProgress === null ? null : Math.max(0, Math.min(100, rankProgress)),
     timelineRows,
     timelineCurrent,
     isBehindTimeline,
-    doneProgressCount: doneProgress.length,
+    doneProgressCount: doneProjectRows.length,
     recentDoneProgressCount: recentDoneProgress.length,
     latestProgress,
     latestCompleted,

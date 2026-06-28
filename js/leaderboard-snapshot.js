@@ -1,5 +1,10 @@
 // Static snapshot copied from dashboard.tomorrow-school.ai leaderboard.
 // Captured through the authorized dashboard UI; keep this file free of credentials.
+export const LEADERBOARD_SNAPSHOT_META = Object.freeze({
+  capturedDate: "2026-06-27",
+  source: "https://dashboard.tomorrow-school.ai/",
+});
+
 export const LEADERBOARD_SNAPSHOT = [
   {
     "rank": 1,

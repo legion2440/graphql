@@ -1,5 +1,6 @@
 const TOOLTIP_TEXT = "Under construction";
 const PLACEHOLDER_SELECTOR = "[data-placeholder]";
+const SNAPSHOT_SELECTOR = '[data-provenance="snapshot"]';
 const INTERACTIVE_SELECTOR = "button, input, select, textarea, a, label, [role='button'], [role='tab']";
 
 function createTooltip(root) {
@@ -50,7 +51,26 @@ function getPlaceholderTarget(event, root) {
   return target && root.contains(target) ? target : null;
 }
 
+function getSnapshotTarget(event, root) {
+  const target = event.target.closest?.(SNAPSHOT_SELECTOR);
+  return target && root.contains(target) ? target : null;
+}
+
+function getTooltipTarget(event, root) {
+  return getSnapshotTarget(event, root) ?? getPlaceholderTarget(event, root);
+}
+
+function getTooltipText(target) {
+  return target?.dataset?.provenance === "snapshot" && target.dataset.snapshotDate
+    ? `snapshot от ${target.dataset.snapshotDate}`
+    : TOOLTIP_TEXT;
+}
+
 function isInteractiveInsidePlaceholder(event, target) {
+  if (target?.dataset?.provenance === "snapshot") {
+    return false;
+  }
+
   const interactive = event.target.closest?.(INTERACTIVE_SELECTOR);
   return Boolean(interactive && target?.contains(interactive) && interactive !== target);
 }
@@ -64,6 +84,7 @@ export function initUnderConstruction(root = document.querySelector(".ts-root") 
   const show = (target, pointerType = null) => {
     activeTarget = target;
     pinnedPointerType = pointerType;
+    tooltip.textContent = getTooltipText(target);
     if (!positionTooltip(tooltip, target)) {
       activeTarget = null;
       pinnedPointerType = null;
@@ -86,9 +107,15 @@ export function initUnderConstruction(root = document.querySelector(".ts-root") 
     }
   };
 
-  root.querySelectorAll(PLACEHOLDER_SELECTOR).forEach((element) => {
+  root.querySelectorAll(`${PLACEHOLDER_SELECTOR}, ${SNAPSHOT_SELECTOR}`).forEach((element) => {
+    const isSnapshot = element.matches(SNAPSHOT_SELECTOR);
     if (!element.hasAttribute("aria-label")) {
-      element.setAttribute("aria-label", "Under construction. Placeholder data.");
+      element.setAttribute(
+        "aria-label",
+        isSnapshot && element.dataset.snapshotDate
+          ? `snapshot от ${element.dataset.snapshotDate}`
+          : "Under construction. Placeholder data.",
+      );
     }
     if (!element.hasAttribute("tabindex")) {
       element.setAttribute("tabindex", "0");
@@ -100,7 +127,7 @@ export function initUnderConstruction(root = document.querySelector(".ts-root") 
       return;
     }
 
-    const target = getPlaceholderTarget(event, root);
+    const target = getTooltipTarget(event, root);
     if (target && !isInteractiveInsidePlaceholder(event, target)) {
       show(target);
     }
@@ -111,7 +138,7 @@ export function initUnderConstruction(root = document.querySelector(".ts-root") 
       return;
     }
 
-    const target = getPlaceholderTarget(event, root);
+    const target = getTooltipTarget(event, root);
     if (!target || !activeTarget || target !== activeTarget) {
       return;
     }
@@ -123,7 +150,14 @@ export function initUnderConstruction(root = document.querySelector(".ts-root") 
   });
 
   root.addEventListener("focusin", (event) => {
-    const target = getPlaceholderTarget(event, root);
+    const target = getTooltipTarget(event, root);
+    if (target && !isInteractiveInsidePlaceholder(event, target)) {
+      show(target);
+    }
+  });
+
+  root.addEventListener("click", (event) => {
+    const target = getTooltipTarget(event, root);
     if (target && !isInteractiveInsidePlaceholder(event, target)) {
       show(target);
     }
@@ -134,7 +168,7 @@ export function initUnderConstruction(root = document.querySelector(".ts-root") 
       return;
     }
 
-    const target = getPlaceholderTarget(event, root);
+    const target = getTooltipTarget(event, root);
     const related = event.relatedTarget;
     if (target && (!related || !target.contains(related))) {
       hide();
@@ -142,7 +176,7 @@ export function initUnderConstruction(root = document.querySelector(".ts-root") 
   });
 
   root.addEventListener("pointerup", (event) => {
-    const target = getPlaceholderTarget(event, root);
+    const target = getTooltipTarget(event, root);
 
     if (!target || isInteractiveInsidePlaceholder(event, target)) {
       return;
@@ -166,7 +200,7 @@ export function initUnderConstruction(root = document.querySelector(".ts-root") 
       return;
     }
 
-    const target = getPlaceholderTarget(event, root);
+    const target = getTooltipTarget(event, root);
     if (target !== activeTarget) {
       hide();
     }
