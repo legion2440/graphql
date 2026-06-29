@@ -539,6 +539,10 @@ export function renderRadarChart(container, axes, title = "Skills radar chart") 
 }
 
 export function renderCompareChart(container, data = null) {
+  if (!container) {
+    return;
+  }
+
   const months = Array.isArray(data?.months) ? data.months : [];
   const you = Array.isArray(data?.you) ? data.you : [];
   const cohort = Array.isArray(data?.cohort) ? data.cohort : [];
@@ -548,11 +552,12 @@ export function renderCompareChart(container, data = null) {
     return;
   }
 
-  renderDualLineChart(container, you, cohort, months, data.title);
+  renderDualLineChart(container, you, cohort, months, data);
 }
 
-function renderDualLineChart(container, you, cohort, months, title = "You versus snapshot cohort comparison") {
+function renderDualLineChart(container, you, cohort, months, data = {}) {
   container.replaceChildren();
+  const title = data.title || "You versus snapshot cohort comparison";
   const width = 860;
   const height = 320;
   const margin = { left: 52, right: 18, top: 24, bottom: 40 };
@@ -620,21 +625,58 @@ function renderDualLineChart(container, you, cohort, months, title = "You versus
       "stroke-linejoin": "round",
     }),
     createSvgElement("path", { d: youLine, class: "chart-line" }),
-    createSvgElement("circle", { cx: xScale(you.length - 1), cy: yScale(you.at(-1)), r: 5, class: "chart-point" }),
-    createSvgElement("circle", {
-      cx: xScale(cohort.length - 1),
-      cy: yScale(cohort.at(-1)),
-      r: 4,
+  );
+
+  cohort.forEach((value, index) => {
+    const point = createSvgElement("circle", {
+      cx: xScale(index),
+      cy: yScale(value),
+      r: index === cohort.length - 1 ? 4 : 3,
       fill: "var(--card)",
       stroke: "var(--muted)",
       "stroke-width": 2,
-    }),
+      class: "compare-cohort-point",
+      tabindex: 0,
+    });
+    appendTitle(point, `${months[index]} — поток: ${formatXp(value)}`);
+    svg.append(point);
+  });
+
+  you.forEach((value, index) => {
+    const point = createSvgElement("circle", {
+      cx: xScale(index),
+      cy: yScale(value),
+      r: index === you.length - 1 ? 5 : 3,
+      class: "chart-point compare-you-point",
+      tabindex: 0,
+    });
+    appendTitle(point, `${months[index]} — твой XP: ${formatXp(value)}`);
+    svg.append(point);
+  });
+
+  const lastYouX = xScale(you.length - 1);
+  const lastYouY = yScale(you.at(-1));
+  svg.append(
+    createSvgElement(
+      "text",
+      {
+        x: Math.min(width - margin.right, lastYouX + 8),
+        y: Math.max(12, lastYouY - 10),
+        class: "chart-value compare-end-label",
+        "text-anchor": "end",
+      },
+      formatXp(you.at(-1)),
+    ),
   );
 
   container.append(svg);
 }
 
 export function renderDistributionHistogram(container, count = 50, pop = "all", snapshot = {}) {
+  if (!container) {
+    return;
+  }
+
   container.replaceChildren();
 
   const values = Array.isArray(snapshot.values) ? snapshot.values.filter(Number.isFinite) : [];
@@ -646,10 +688,11 @@ export function renderDistributionHistogram(container, count = 50, pop = "all", 
   const bins = generateSnapshotBins(values, count);
   const width = 860;
   const height = 300;
-  const margin = { left: 50, right: 14, top: 16, bottom: 40 };
+  const margin = { left: 50, right: 14, top: 28, bottom: 40 };
   const plotWidth = width - margin.left - margin.right;
   const plotHeight = height - margin.top - margin.bottom;
-  const max = Math.max(1, ...bins);
+  const max = Math.max(1, ...bins.map((bin) => bin.count));
+  const sqrtMax = Math.sqrt(max);
   const barWidth = plotWidth / bins.length;
   const domainMax = Math.max(1, ...values);
   const markerValue = Number.isFinite(snapshot.markerValue) ? snapshot.markerValue : null;
@@ -666,15 +709,21 @@ export function renderDistributionHistogram(container, count = 50, pop = "all", 
 
   appendTitle(svg, "Student XP distribution snapshot");
 
+  const renderedTicks = new Set();
   for (let index = 0; index <= 4; index += 1) {
     const ratio = index / 4;
     const y = margin.top + plotHeight * (1 - ratio);
+    const tickValue = Math.round(max * ratio * ratio);
+    if (renderedTicks.has(tickValue)) {
+      continue;
+    }
+    renderedTicks.add(tickValue);
     svg.append(
       createSvgElement("line", { x1: margin.left, x2: width - margin.right, y1: y, y2: y, class: "chart-grid-line" }),
       createSvgElement(
         "text",
         { x: margin.left - 9, y: y + 4, class: "chart-label", "text-anchor": "end" },
-        String(Math.round(max * ratio)),
+        String(tickValue),
       ),
     );
   }
@@ -703,10 +752,13 @@ export function renderDistributionHistogram(container, count = 50, pop = "all", 
     ),
   );
 
-  bins.forEach((value, index) => {
-    const barHeight = Math.max(1.5, (plotHeight * value) / max);
+  bins.forEach((bin, index) => {
+    const value = bin.count;
+    const barHeight = value > 0 ? Math.max(2, (plotHeight * Math.sqrt(value)) / sqrtMax) : 0;
     const x = margin.left + index * barWidth;
     const y = margin.top + plotHeight - barHeight;
+    const group = createSvgElement("g", { class: "histogram-bar-group", tabindex: 0 });
+    const rangeText = `${formatXp(bin.minimum)} - ${formatXp(bin.maximum)}`;
     const rect = createSvgElement("rect", {
       x: (x + 0.6).toFixed(1),
       y: y.toFixed(1),
@@ -716,8 +768,31 @@ export function renderDistributionHistogram(container, count = 50, pop = "all", 
       fill: hasMarker && index === yourIndex ? "var(--lime)" : "var(--grid)",
       style: hasMarker && index === yourIndex ? "filter: drop-shadow(0 0 8px var(--lime-a))" : "",
     });
-    appendTitle(rect, `${value} students`);
-    svg.append(rect);
+    appendTitle(group, `${value} студентов · ${rangeText}`);
+    group.append(
+      rect,
+      createSvgElement(
+        "text",
+        {
+          x: (x + barWidth / 2).toFixed(1),
+          y: Math.max(12, y - 6).toFixed(1),
+          class: "histogram-bar-value",
+          "text-anchor": "middle",
+        },
+        String(value),
+      ),
+      createSvgElement(
+        "text",
+        {
+          x: ((margin.left + width - margin.right) / 2).toFixed(1),
+          y: height - 12,
+          class: "chart-label histogram-range-value",
+          "text-anchor": "middle",
+        },
+        `XP range: ${rangeText}`,
+      ),
+    );
+    svg.append(group);
   });
 
   if (hasMarker) {
@@ -727,7 +802,7 @@ export function renderDistributionHistogram(container, count = 50, pop = "all", 
         "text",
         {
           x: markerX.toFixed(1),
-          y: margin.top + plotHeight - (plotHeight * bins[yourIndex]) / max - 9,
+          y: Math.max(12, margin.top + plotHeight - (plotHeight * Math.sqrt(bins[yourIndex].count)) / sqrtMax - 9),
           class: "chart-label histogram-marker",
           "text-anchor": "middle",
         },
@@ -743,7 +818,6 @@ export function renderDistributionHistogram(container, count = 50, pop = "all", 
       { x: width - margin.right, y: height - 12, class: "chart-label", "text-anchor": "end" },
       formatExactNumber(domainMax),
     ),
-    createSvgElement("text", { x: (margin.left + width - margin.right) / 2, y: height - 12, class: "chart-label", "text-anchor": "middle" }, "XP →"),
   );
 
   container.append(svg);
@@ -752,11 +826,16 @@ export function renderDistributionHistogram(container, count = 50, pop = "all", 
 function generateSnapshotBins(values, count) {
   const binCount = Math.max(1, Number.isFinite(count) ? Math.round(count) : 50);
   const maximum = Math.max(1, ...values);
-  const bins = Array.from({ length: binCount }, () => 0);
+  const binSize = maximum / binCount;
+  const bins = Array.from({ length: binCount }, (_, index) => ({
+    count: 0,
+    minimum: index * binSize,
+    maximum: index === binCount - 1 ? maximum : (index + 1) * binSize,
+  }));
 
   for (const value of values) {
     const index = Math.min(binCount - 1, Math.max(0, Math.floor((Math.max(0, value) / maximum) * binCount)));
-    bins[index] += 1;
+    bins[index].count += 1;
   }
 
   return bins;

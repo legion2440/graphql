@@ -1,5 +1,5 @@
 import { clearToken, getToken, logout, signIn, storeToken } from "./auth.js";
-import { normalizeProfileDetails, normalizeTransactions, normalizeUser } from "./data.js?v=20260628-live-data10";
+import { normalizeProfileDetails, normalizeTransactions, normalizeUser } from "./data.js?v=20260629-public-profile2";
 import { graphqlRequest } from "./graphql.js";
 import {
   PROFILE_CURRICULUM_QUERY,
@@ -22,7 +22,9 @@ import {
   setLoginLoading,
   setView,
   updateLoadingStage,
-} from "./ui.js?v=20260628-live-data10";
+} from "./ui.js?v=20260629-public-profile2";
+
+const LOGIN_LOADING_MIN_MS = 1500;
 
 const state = {
   isBusy: false,
@@ -52,6 +54,23 @@ function getErrorMessage(error) {
 function markStage(key, stateName, status) {
   state.activeStage = key;
   updateLoadingStage(key, stateName, status);
+}
+
+function wait(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+async function waitForMinimumElapsed(startedAt, minimumMs) {
+  if (!startedAt || !minimumMs) {
+    return;
+  }
+
+  const remainingMs = minimumMs - (Date.now() - startedAt);
+  if (remainingMs > 0) {
+    await wait(remainingMs);
+  }
 }
 
 async function fetchOptionalProfileDetails(userId) {
@@ -114,7 +133,12 @@ function resetAuthenticatedState() {
   resetDashboard();
 }
 
-async function loadAuthenticatedProfile({ restoredSession = false, resetStages = true } = {}) {
+async function loadAuthenticatedProfile({
+  restoredSession = false,
+  resetStages = true,
+  loadingStartedAt = 0,
+  minimumLoadingMs = 0,
+} = {}) {
   setView("loading");
   if (resetStages) {
     resetLoadingStages({ restoredSession });
@@ -144,6 +168,7 @@ async function loadAuthenticatedProfile({ restoredSession = false, resetStages =
   renderDashboard(state.user, state.transactions, state.details);
   markStage("render", "done", "готово");
   state.activeStage = null;
+  await waitForMinimumElapsed(loadingStartedAt, minimumLoadingMs);
   setView("dashboard");
 }
 
@@ -169,6 +194,7 @@ async function handleLogin(event) {
   resetAuthenticatedState();
   setView("loading");
   resetLoadingStages({ restoredSession: false });
+  const loadingStartedAt = Date.now();
 
   try {
     markStage("signinRequest", "active", "запрос");
@@ -177,7 +203,12 @@ async function handleLogin(event) {
     markStage("signinSuccess", "done", "200 OK");
     storeToken(token);
     elements.password.value = "";
-    await loadAuthenticatedProfile({ restoredSession: false, resetStages: false });
+    await loadAuthenticatedProfile({
+      restoredSession: false,
+      resetStages: false,
+      loadingStartedAt,
+      minimumLoadingMs: LOGIN_LOADING_MIN_MS,
+    });
   } catch (error) {
     if (state.activeStage) {
       updateLoadingStage(state.activeStage, "error", "ошибка");

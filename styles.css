@@ -159,12 +159,14 @@ p {
 }
 
 .login-copy {
+  align-self: center;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 28px;
+  min-height: 368px;
   min-width: 0;
-  padding: 6vw 5vw;
+  padding: 0 5vw;
 }
 
 .brand-mark,
@@ -298,33 +300,6 @@ p {
   -webkit-background-clip: text;
 }
 
-.login-intro {
-  max-width: 440px;
-  margin: 0;
-  color: var(--muted);
-  font: 400 18px/1.55 "Manrope", sans-serif;
-}
-
-.login-preview {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 26px;
-  margin-top: 4px;
-}
-
-.login-preview strong {
-  display: block;
-  color: var(--text);
-  font: 600 26px "JetBrains Mono", monospace;
-}
-
-.login-preview span {
-  display: block;
-  margin-top: 3px;
-  color: var(--muted);
-  font: 500 12px "Manrope", sans-serif;
-}
-
 .lime,
 .lime-text {
   color: var(--lime) !important;
@@ -353,14 +328,8 @@ p {
 }
 
 .login-card h2 {
-  margin: 0 0 6px;
-  font: 600 24px "Space Grotesk", sans-serif;
-}
-
-.login-card p {
   margin: 0 0 24px;
-  color: var(--muted);
-  font: 400 14px "Manrope", sans-serif;
+  font: 600 24px "Space Grotesk", sans-serif;
 }
 
 .login-card form {
@@ -431,16 +400,6 @@ p {
 
 .primary-button:active:not(:disabled) {
   transform: translateY(0);
-}
-
-.login-note {
-  margin-top: 18px;
-  padding: 12px 14px;
-  border: 1px dashed var(--brd);
-  border-radius: 11px;
-  color: var(--muted);
-  background: var(--bg2);
-  font: 500 12px "JetBrains Mono", monospace;
 }
 
 .loading-view {
@@ -783,23 +742,25 @@ p {
   text-align: right;
 }
 
-.level-copy span,
-.level-copy small {
+.level-copy span {
   display: block;
-  color: var(--muted);
-  font: 500 12px "JetBrains Mono", monospace;
-}
-
-.level-copy strong {
-  display: block;
-  margin-top: 2px;
   color: var(--text);
   font: 700 16px "Space Grotesk", sans-serif;
 }
 
+.level-copy strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font: 600 12px "JetBrains Mono", monospace;
+  letter-spacing: 0.04em;
+}
+
 .level-copy small {
-  margin-top: 2px;
+  display: block;
+  margin-top: 3px;
   color: var(--blue);
+  font: 500 12px "JetBrains Mono", monospace;
 }
 
 .level-ring {
@@ -899,11 +860,34 @@ p {
   font-size: 30px;
 }
 
+.stat-total-xp-card strong {
+  font-size: 42px;
+}
+
+.skill-stat-card .last-skill-value {
+  color: var(--cyan);
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 34px;
+}
+
 .stat-card small {
   display: block;
   margin-top: 6px;
   color: var(--muted);
   font: 500 12px "JetBrains Mono", monospace;
+}
+
+.latest-xp-meta span {
+  display: block;
+}
+
+#stat-latest-project {
+  overflow-wrap: anywhere;
+}
+
+#stat-latest-date {
+  margin-top: 2px;
+  white-space: nowrap;
 }
 
 .triple-grid,
@@ -915,7 +899,7 @@ p {
 }
 
 .triple-grid {
-  grid-template-columns: 1.5fr 1fr 1fr;
+  grid-template-columns: 1fr;
 }
 
 .profile-two-col,
@@ -1116,14 +1100,6 @@ p {
   font: 500 12.5px/1.45 "Manrope", sans-serif;
 }
 
-.audit-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
-  margin-bottom: 22px;
-}
-
-.audit-legend span,
 .radial-legend span {
   display: flex;
   align-items: center;
@@ -1132,23 +1108,10 @@ p {
   font: 500 11px "JetBrains Mono", monospace;
 }
 
-.audit-legend i,
 .radial-legend i {
   width: 9px;
   height: 9px;
   border-radius: 2px;
-}
-
-.audit-legend .red {
-  background: var(--red);
-}
-
-.audit-legend .yellow {
-  background: var(--yellow);
-}
-
-.audit-legend .green {
-  background: var(--lime);
 }
 
 .audit-bar + .audit-bar {
@@ -1496,6 +1459,10 @@ p {
   font-size: 18px;
 }
 
+.life-skills-note {
+  margin-top: 35px;
+}
+
 .skill-card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -1534,6 +1501,7 @@ p {
 
 .skill-card em {
   display: inline-flex;
+  align-items: center;
   gap: 7px;
   margin-bottom: 14px;
   padding: 5px 12px;
@@ -1544,6 +1512,16 @@ p {
   font-style: normal;
   letter-spacing: 0.03em;
   white-space: nowrap;
+}
+
+.skill-card em .tier-name,
+.skill-card em .tier-stars {
+  color: inherit;
+  font: inherit;
+}
+
+.skill-card em .tier-stars {
+  letter-spacing: 0.02em;
 }
 
 .skill-card > i {
@@ -1650,6 +1628,7 @@ p {
 
 .chart-box,
 .project-chart-box,
+.project-xp-list,
 #compare-chart,
 #distribution-chart {
   min-width: 0;
@@ -1677,6 +1656,64 @@ p {
 #distribution-chart svg {
   display: block;
   max-width: none;
+}
+
+.project-xp-list {
+  display: grid;
+  gap: 8px;
+  overflow-x: visible;
+}
+
+.project-xp-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid var(--brd);
+  border-radius: 8px;
+  background: var(--card2);
+}
+
+.project-xp-name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font: 600 13px "Manrope", sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-xp-value {
+  color: var(--cyan);
+  font: 700 13px "JetBrains Mono", monospace;
+  white-space: nowrap;
+}
+
+.project-list-more {
+  min-height: 32px;
+  padding: 7px 13px;
+  border: 1px solid var(--brd);
+  border-radius: 8px;
+  color: var(--blue);
+  background: var(--card2);
+  font: 700 12px "JetBrains Mono", monospace;
+}
+
+.project-list-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.project-list-more:hover,
+.project-list-more:focus-visible {
+  border-color: var(--blue);
+  color: #fff;
+  background: var(--blue);
 }
 
 .chart-grid-line {
@@ -1738,6 +1775,29 @@ p {
 .histogram-marker {
   fill: var(--lime);
   font-weight: 600;
+}
+
+.histogram-bar-value {
+  opacity: 0;
+  pointer-events: none;
+  fill: var(--text);
+  font: 700 11px "JetBrains Mono", monospace;
+  transition: opacity 0.12s ease;
+}
+
+.histogram-range-value {
+  opacity: 0;
+  pointer-events: none;
+  fill: var(--muted);
+  font: 700 11px "JetBrains Mono", monospace;
+  transition: opacity 0.12s ease;
+}
+
+.histogram-bar-group:hover .histogram-bar-value,
+.histogram-bar-group:focus .histogram-bar-value,
+.histogram-bar-group:hover .histogram-range-value,
+.histogram-bar-group:focus .histogram-range-value {
+  opacity: 1;
 }
 
 .histogram-y-title {
@@ -1893,6 +1953,42 @@ p {
   border-top: 2px dashed var(--muted);
 }
 
+.compare-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.select-control {
+  display: grid;
+  gap: 6px;
+  min-width: min(100%, 260px);
+}
+
+.select-control span {
+  color: var(--muted);
+  font: 600 12px "JetBrains Mono", monospace;
+  letter-spacing: 0.04em;
+}
+
+.select-control select {
+  min-height: 42px;
+  padding: 0 42px 0 14px;
+  border: 1px solid var(--brd);
+  border-radius: 8px;
+  color: var(--text);
+  background: var(--card2);
+  font: 700 13px "JetBrains Mono", monospace;
+  cursor: pointer;
+}
+
+.select-control select:focus {
+  border-color: var(--blue);
+  outline: 2px solid var(--blue-a);
+  outline-offset: 2px;
+}
+
 .range-row {
   flex-wrap: wrap;
   gap: 16px;
@@ -1952,6 +2048,50 @@ p {
   font: 500 12px "JetBrains Mono", monospace;
 }
 
+.board-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: -4px;
+}
+
+.board-search {
+  display: grid;
+  grid-template-columns: minmax(190px, 280px);
+  gap: 6px;
+  margin-left: auto;
+}
+
+.board-search label {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font: 600 11px "JetBrains Mono", monospace;
+  letter-spacing: 0.04em;
+  text-align: left;
+}
+
+.board-search input {
+  min-height: 36px;
+  min-width: 0;
+  padding: 0 12px;
+  border: 1px solid var(--brd);
+  border-radius: 8px;
+  color: var(--text);
+  background: var(--card2);
+  font: 600 12px "JetBrains Mono", monospace;
+}
+
+.board-search input::placeholder {
+  color: var(--muted);
+}
+
+.board-search input:focus {
+  border-color: var(--blue);
+  outline: 2px solid var(--blue-a);
+  outline-offset: 2px;
+}
+
 .leaderboard-card {
   overflow-x: auto;
   padding: 14px;
@@ -1992,6 +2132,18 @@ p {
   border-color: var(--blue);
   background: var(--bg2);
   box-shadow: 0 0 22px -8px var(--blue-a);
+}
+
+.leader-empty {
+  display: grid;
+  min-height: 90px;
+  place-items: center;
+  margin: 8px 0;
+  border: 1px dashed var(--brd);
+  border-radius: 14px;
+  color: var(--muted);
+  background: var(--card2);
+  font: 600 13px "JetBrains Mono", monospace;
 }
 
 .leader-rank {
@@ -2137,9 +2289,21 @@ p {
 }
 
 .public-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 26px;
+  display: grid;
+  grid-template-columns: max-content max-content;
+  align-items: start;
+  justify-content: flex-start;
+  gap: 18px 34px;
+}
+
+.public-stat {
+  display: grid;
+  gap: 2px;
+}
+
+.public-stat-xp {
+  justify-items: end;
+  text-align: right;
 }
 
 .public-stats strong {
@@ -2153,11 +2317,39 @@ p {
   font: 500 11px "Manrope", sans-serif;
 }
 
+.public-substat {
+  margin-top: 12px;
+}
+
+.public-audit-ratio strong {
+  color: var(--audit-color, var(--lime));
+}
+
+.public-radar-card .section-title-row {
+  width: 100%;
+}
+
+.public-radar-controls {
+  margin-left: auto;
+}
+
+.public-radar-card > div:not(.section-title-row) {
+  min-height: 250px;
+}
+
+.public-radar-card svg {
+  width: min(360px, 100%);
+}
+
 .team-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
   margin: 0 0 26px;
+}
+
+.team-section-title {
+  margin-bottom: 18px;
 }
 
 .team-tags div {
@@ -2169,11 +2361,6 @@ p {
   border: 1px solid var(--brd);
   border-radius: 14px;
   background: var(--bg2);
-}
-
-.team-tags div:first-child {
-  border-color: var(--lime);
-  background: var(--lime-a);
 }
 
 .team-tags span {
@@ -2499,6 +2686,7 @@ p {
   }
 
   .login-copy {
+    align-self: stretch;
     min-height: auto;
     padding: 42px 24px 18px;
   }

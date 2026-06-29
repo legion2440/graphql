@@ -2,6 +2,11 @@ import {
   CURRICULUM_SNAPSHOT,
   CURRICULUM_SNAPSHOT_META,
 } from "./curriculum-snapshot.js?v=20260628-live-data10";
+import {
+  SKILLS_SNAPSHOT,
+  SKILLS_SNAPSHOT_META,
+  SKILLS_SNAPSHOT_OWNER,
+} from "./skills-snapshot.js?v=20260629-skills-snapshot1";
 
 const CURRICULUM_SNAPSHOT_OBJECTS = new WeakSet(CURRICULUM_SNAPSHOT);
 const OBJECT_SOURCE_META = Symbol("objectSourceMeta");
@@ -321,22 +326,31 @@ export function groupXpByProject(transactions) {
     if (existing) {
       existing.xp += transaction.amount;
       existing.transactions += 1;
+      const transactionTime = transaction.date?.getTime();
+
+      if (Number.isFinite(transactionTime) && transactionTime > existing.latestTime) {
+        existing.latestDate = transaction.date;
+        existing.latestTime = transactionTime;
+      }
 
       if (existing.name === "Unknown project") {
         existing.name = getProjectName(transaction);
       }
     } else {
+      const transactionTime = transaction.date?.getTime();
       projects.set(key, {
         key,
         name: getProjectName(transaction),
         xp: transaction.amount,
         transactions: 1,
+        latestDate: Number.isFinite(transactionTime) ? transaction.date : null,
+        latestTime: Number.isFinite(transactionTime) ? transactionTime : -Infinity,
       });
     }
   }
 
   return [...projects.values()].sort(
-    (left, right) => right.xp - left.xp || left.name.localeCompare(right.name),
+    (left, right) => right.latestTime - left.latestTime || right.xp - left.xp || left.name.localeCompare(right.name),
   );
 }
 
@@ -409,7 +423,7 @@ export function formatInteger(value) {
 }
 
 export function formatExactNumber(value) {
-  return preciseIntegerFormatter.format(Number.isFinite(value) ? value : 0);
+  return preciseIntegerFormatter.format(Number.isFinite(value) ? value : 0).replace(/[\u00a0\u202f]/g, " ");
 }
 
 export function formatCompactNumber(value) {
@@ -504,7 +518,7 @@ export function getAuditMeta(auditRatio) {
     };
   }
 
-  if (ratio <= 0.8) {
+  if (ratio <= 1) {
     return {
       color: "oklch(0.80 0.15 85)",
       tint: "oklch(0.80 0.15 85 / 0.18)",
@@ -639,6 +653,8 @@ export const SKILL_LABELS = Object.freeze({
   "ruby-on-rails": "Ruby on Rails",
   laravel: "Laravel",
   django: "Django",
+  electron: "Electron",
+  employability: "Employability",
 });
 
 const TECHNICAL_SKILL_KEYS = [
@@ -687,6 +703,11 @@ const TECHNOLOGY_SKILL_KEYS = [
   "ruby-on-rails",
   "laravel",
   "django",
+  "electron",
+];
+
+const LIFE_SKILL_KEYS = [
+  "employability",
 ];
 
 function isPlainObject(value) {
@@ -1074,6 +1095,36 @@ function pickSkills(stats, keys, minimumItems = 10) {
   return [...keyed, ...extra].slice(0, minimumItems);
 }
 
+function isSkillsSnapshotOwner(user) {
+  const login = String(user?.login || "").toLowerCase();
+  const id = String(user?.id || "");
+  return login === SKILLS_SNAPSHOT_OWNER.login || id === SKILLS_SNAPSHOT_OWNER.id;
+}
+
+function normalizeSnapshotSkill(skill, group) {
+  const completed = toFiniteNumber(skill.completed);
+  const total = toFiniteNumber(skill.total);
+  return {
+    ...skill,
+    group,
+    completed,
+    total,
+    value: total > 0 ? Math.round((completed / total) * 100) : 0,
+  };
+}
+
+function getIntraSkillsSnapshot(user) {
+  if (!isSkillsSnapshotOwner(user)) {
+    return null;
+  }
+
+  return {
+    technical: SKILLS_SNAPSHOT.technical.map((skill) => normalizeSnapshotSkill(skill, "technical")),
+    technology: SKILLS_SNAPSHOT.technology.map((skill) => normalizeSnapshotSkill(skill, "technology")),
+    life: SKILLS_SNAPSHOT.life.map((skill) => normalizeSnapshotSkill(skill, "life")),
+  };
+}
+
 function getBestFriend(groups, currentUserId) {
   const partnerCounts = new Map();
 
@@ -1153,8 +1204,14 @@ export function deriveProfileInsights(user, details, transactions) {
     isPlainObject(object?.attrs?.baseSkills) && objectAttrUsesSnapshot(object, "baseSkills"),
   );
   const skillStats = hasProgressData ? buildSkillStats(programObjects, completedProgressForSkills) : [];
-  const technicalSkills = pickSkills(skillStats.filter((skill) => skill.group === "technical"), TECHNICAL_SKILL_KEYS, 10);
-  const technologySkills = pickSkills(skillStats.filter((skill) => skill.group === "technology"), TECHNOLOGY_SKILL_KEYS, 10);
+  const intraSkillsSnapshot = getIntraSkillsSnapshot(user);
+  const technicalSkills = intraSkillsSnapshot?.technical
+    ?? pickSkills(skillStats.filter((skill) => skill.group === "technical"), TECHNICAL_SKILL_KEYS, 10);
+  const technologySkills = intraSkillsSnapshot?.technology
+    ?? pickSkills(skillStats.filter((skill) => skill.group === "technology"), TECHNOLOGY_SKILL_KEYS, 10);
+  const lifeSkills = intraSkillsSnapshot?.life
+    ?? pickSkills(skillStats.filter((skill) => skill.group === "life"), LIFE_SKILL_KEYS, 3);
+  const skillsSnapshotMeta = intraSkillsSnapshot ? SKILLS_SNAPSHOT_META : skillsUseCurriculumSnapshot ? CURRICULUM_SNAPSHOT_META : null;
   const activeGroups = (details?.groups ?? []).filter((group) =>
     ["working", "setup"].includes(group?.group?.status),
   );
@@ -1189,7 +1246,7 @@ export function deriveProfileInsights(user, details, transactions) {
     timelineSnapshotMeta: timelineUsesCurriculumSnapshot ? CURRICULUM_SNAPSHOT_META : null,
     forecastSnapshotMeta: timelineUsesCurriculumSnapshot || rankUsesCurriculumSnapshot ? CURRICULUM_SNAPSHOT_META : null,
     skillsUseCurriculumSnapshot,
-    skillsSnapshotMeta: skillsUseCurriculumSnapshot ? CURRICULUM_SNAPSHOT_META : null,
+    skillsSnapshotMeta,
     latestSkillSnapshotMeta: latestBaseSkillsSource.usesSnapshot ? CURRICULUM_SNAPSHOT_META : null,
     ranks,
     levels,
@@ -1209,7 +1266,8 @@ export function deriveProfileInsights(user, details, transactions) {
         : "—",
     technicalSkills,
     technologySkills,
-    topSkills: [...technicalSkills, ...technologySkills].sort(
+    lifeSkills,
+    topSkills: [...technicalSkills, ...technologySkills, ...lifeSkills].sort(
       (left, right) => right.value - left.value || right.completed - left.completed,
     ),
     activeGroups,

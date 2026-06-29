@@ -15,7 +15,7 @@
       href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
       rel="stylesheet"
     >
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=20260629-public-profile3">
   </head>
   <body>
     <div id="app-root" class="ts-root" data-theme="dark">
@@ -60,37 +60,17 @@
             </div>
             <div class="brand-text">
               <div>tomorrow<span>.school</span></div>
-              <small>peer-to-peer · alem.ai</small>
+              <small>AstanaHub · alem.ai</small>
             </div>
           </div>
 
           <p class="code-eyebrow">// GRAPHQL PROFILE</p>
           <h1 id="login-title">Твой прогресс.<br><span>В реальном времени.</span></h1>
-          <p class="login-intro">
-            XP, аудиты, проекты и навыки — всё из платформы 01&nbsp;Edu через GraphQL.
-            Войди, чтобы открыть свой дашборд.
-          </p>
-
-          <div class="login-preview" aria-label="Preview stats">
-            <div>
-              <strong id="login-preview-xp">—</strong>
-              <span>всего XP</span>
-            </div>
-            <div>
-              <strong id="login-preview-projects">—</strong>
-              <span>проектов</span>
-            </div>
-            <div>
-              <strong id="login-preview-ratio" class="lime">—</strong>
-              <span>audit ratio</span>
-            </div>
-          </div>
         </div>
 
         <div class="login-panel-wrap">
           <article class="login-card" aria-labelledby="signin-title">
             <h2 id="signin-title">Вход</h2>
-            <p>Используй логин и пароль платформы</p>
 
             <form id="login-form" novalidate aria-describedby="login-error">
               <label for="identifier">ЛОГИН / EMAIL</label>
@@ -119,8 +99,6 @@
                 Войти и загрузить профиль →
               </button>
             </form>
-
-            <div class="login-note">Данные профиля загружаются после авторизации</div>
           </article>
         </div>
       </section>
@@ -219,7 +197,7 @@
           <section id="panel-profile" class="tab-panel ts-tab" role="tabpanel" tabindex="0" aria-labelledby="tab-profile">
             <section class="hero-card">
               <div class="hero-copy">
-                <div class="mono-accent" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">ASTANA · ALEM.AI</div>
+                <div class="mono-accent" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">AstanaHub · Alem.ai</div>
                 <h1>Привет, <span id="profile-first-name">—</span> 👋</h1>
                 <div class="identity-line">
                   <span id="profile-handle">@—</span>
@@ -231,8 +209,8 @@
               <div class="level-wrap" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
                 <div class="level-copy">
                   <span>УРОВЕНЬ</span>
-                  <strong id="level-next-label">до LVL 33</strong>
-                  <small id="level-next-note">63.1 kB до апа</small>
+                  <strong id="level-next-label">8 ур. до следующего ранга</strong>
+                  <small id="level-next-note">след. ранг Basic developer</small>
                 </div>
                 <div id="level-ring" class="level-ring" data-ring-target="58">
                   <div><strong id="level-value" data-count-placeholder="32">32</strong><span>LEVEL</span></div>
@@ -241,25 +219,27 @@
             </section>
 
             <section class="stat-grid">
-              <article class="stat-card ts-card">
+              <article class="stat-card stat-total-xp-card ts-card">
                 <span>ВСЕГО XP</span>
                 <strong id="stat-total-xp" data-count-value="0" data-count-decimals="2">0 B</strong>
                 <small id="stat-total-xp-raw">0 bytes</small>
+              </article>
+              <article class="stat-card ts-card">
+                <span>ПОСЛЕДНЯЯ XP</span>
+                <strong id="stat-latest-xp" class="latest-xp-value cyan-text">No data</strong>
+                <small class="latest-xp-meta">
+                  <span id="stat-latest-project">No project</span>
+                  <span id="stat-latest-date">No date</span>
+                </small>
               </article>
               <article class="stat-card ts-card" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
                 <span>ПРОЕКТОВ ПРОЙДЕНО</span>
                 <strong id="stat-projects-passed" data-count-placeholder="47">47</strong>
                 <small id="stat-projects-note" class="lime-text">—</small>
               </article>
-              <article class="stat-card ts-card">
-                <span>AUDIT RATIO</span>
-                <strong id="stat-audit-ratio" class="lime-text" data-count-value="0" data-count-decimals="2">0</strong>
-                <small id="audit-balance-label">баланс аудитов</small>
-              </article>
-              <article class="stat-card ts-card">
-                <span>ПОСЛЕДНЯЯ XP</span>
-                <strong id="stat-latest-xp" class="latest-xp-value cyan-text">No data</strong>
-                <small><span id="stat-latest-project">No project</span> · <span id="stat-latest-date">No date</span></small>
+              <article class="stat-card skill-stat-card ts-card" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
+                <span>ПОСЛЕДНИЙ НАВЫК</span>
+                <strong id="last-skill-value" class="last-skill-value cyan-text">AI</strong>
               </article>
             </section>
 
@@ -274,16 +254,6 @@
                   <div class="progress-label"><span id="next-rank-label">до ранга Basic developer</span><span id="next-rank-distance">8 уровня</span></div>
                   <div class="mini-progress"><span id="next-rank-progress" class="ts-fill" style="width: 58%"></span></div>
                 </div>
-              </article>
-              <article class="compact-card ts-card" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
-                <span class="card-label"><span class="card-icon">⚑</span><span>CHECKPOINT</span></span>
-                <strong id="checkpoint-value">100</strong>
-                <small id="checkpoint-note">контрольный уровень</small>
-              </article>
-              <article class="compact-card ts-card" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
-                <span class="card-label"><span class="card-icon">⚙</span><span>ПОСЛЕДНИЙ НАВЫК</span></span>
-                <strong id="last-skill-value" class="last-skill-value cyan-text">AI</strong>
-                <small id="last-skill-note">недавно прокачан</small>
               </article>
             </section>
 
@@ -300,11 +270,6 @@
                     <p id="audit-status-note">Данные будут рассчитаны после загрузки профиля.</p>
                   </div>
                 </div>
-                <div class="audit-legend">
-                  <span><i class="red"></i>&lt; 0.5</span>
-                  <span><i class="yellow"></i>0.6–0.8</span>
-                  <span><i class="green"></i>&gt; 0.8</span>
-                </div>
                 <div class="audit-bar">
                   <div class="progress-label"><span>Сделано (отдано)</span><span id="audit-up-value">0 B</span></div>
                   <div class="mini-progress"><span id="audit-up-bar" class="ts-fill"></span></div>
@@ -320,8 +285,8 @@
                 <dl>
                   <div><dt>Логин</dt><dd id="info-login">—</dd></div>
                   <div><dt>ID</dt><dd id="info-id">#—</dd></div>
-                  <div data-placeholder tabindex="0" aria-label="Under construction. Placeholder data."><dt>Кампус</dt><dd id="profile-campus">Astana</dd></div>
-                  <div data-placeholder tabindex="0" aria-label="Under construction. Placeholder data."><dt>Когорта</dt><dd id="profile-cohort">Бассейн #3</dd></div>
+                  <div data-placeholder tabindex="0" aria-label="Under construction. Placeholder data."><dt>Кампус</dt><dd id="profile-campus">AstanaHub</dd></div>
+                  <div data-placeholder tabindex="0" aria-label="Under construction. Placeholder data."><dt>Поток</dt><dd id="profile-cohort">3</dd></div>
                 </dl>
               </article>
             </section>
@@ -333,7 +298,7 @@
                 <p>// ТРАЕКТОРИЯ</p>
                 <h2>Прогресс и ранги</h2>
               </div>
-              <span>путь по curriculum · Astana</span>
+              <span>путь по curriculum · AstanaHub</span>
             </div>
             <div id="progress-warning" class="warning-strip" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
               <span>⚠️</span>
@@ -398,7 +363,10 @@
             </section>
             <div class="tier-legend" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
               <span>ТИРЫ:</span>
-              <strong class="tier-none">—</strong>
+              <strong class="tier-code">★☆☆ Code Explorer</strong>
+              <strong class="tier-bug">★★☆ Bug Squasher</strong>
+              <strong class="tier-script">★★★ Script Wizard</strong>
+              <strong class="tier-master">★★★★ Master Hacker</strong>
             </div>
             <section data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
               <h3 class="subhead">Технические навыки</h3>
@@ -432,6 +400,10 @@
                 <article class="skill-card ts-card"><div><strong>GraphQL</strong><span>0/1</span></div><em class="tier-none">—</em><i class="ts-fill" style="width: 0"></i></article>
               </div>
             </section>
+            <section class="life-skills-note">
+              <h3 class="subhead">Life Skills</h3>
+              <p class="muted-copy">Builds essential personal, relational, and professional competencies through structured learning and practical activities, strengthening communication, collaboration, resilience, and leadership</p>
+            </section>
           </section>
 
           <section id="panel-stats" class="tab-panel ts-tab" role="tabpanel" tabindex="0" aria-labelledby="tab-stats" hidden>
@@ -440,7 +412,7 @@
                 <p>// АНАЛИТИКА</p>
                 <h2>Статистика</h2>
               </div>
-              <span>XP, аудиты и распределение по потокам</span>
+              <span>XP: распределение по задачам и потокам</span>
             </div>
             <section class="wide-card">
               <div class="section-title-row">
@@ -448,50 +420,6 @@
                 <span id="activity-summary">0 активных дней · 0 недель · по XP</span>
               </div>
               <div id="activity-heatmap" class="heatmap-wrap"></div>
-            </section>
-            <section class="wide-card">
-              <div class="section-title-row">
-                <h3>Накопленный XP</h3>
-                <span>кумулятивно · все транзакции</span>
-              </div>
-              <div id="cumulative-chart" class="chart-box"></div>
-            </section>
-            <section class="stats-split stats-main-grid">
-              <article class="wide-card">
-                <h3>XP по проектам</h3>
-                <div id="project-chart" class="project-chart-box"></div>
-              </article>
-              <article class="wide-card audit-radial-card">
-                <h3>Audit ratio</h3>
-                <div class="radial-wrap">
-                  <div id="audit-radial"></div>
-                  <div class="radial-center">
-                    <strong id="radial-ratio">0</strong>
-                    <span>ratio</span>
-                  </div>
-                </div>
-                <div class="radial-legend">
-                  <span><i></i>Сделано</span>
-                  <span><i></i>Получено</span>
-                </div>
-              </article>
-            </section>
-            <section class="stats-split stats-skills-grid">
-              <article class="wide-card radar-card" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
-                <h3>Навыки</h3>
-                <div id="stats-skills-radar"></div>
-              </article>
-              <article class="wide-card" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
-                <h3>Разбивка навыков</h3>
-                <div id="skill-breakdown" class="breakdown-list">
-                  <div><span>Golang</span><i><b class="ts-fill" style="width: 88%"></b></i><strong>88</strong></div>
-                  <div><span>JavaScript</span><i><b class="ts-fill" style="width: 78%"></b></i><strong>78</strong></div>
-                  <div><span>Rust</span><i><b class="ts-fill" style="width: 54%"></b></i><strong>54</strong></div>
-                  <div><span>Algorithms</span><i><b class="ts-fill" style="width: 70%"></b></i><strong>70</strong></div>
-                  <div><span>SQL</span><i><b class="ts-fill" style="width: 62%"></b></i><strong>62</strong></div>
-                  <div><span>HTML/CSS</span><i><b class="ts-fill" style="width: 82%"></b></i><strong>82</strong></div>
-                </div>
-              </article>
             </section>
             <section class="wide-card" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
               <div class="section-title-row">
@@ -501,7 +429,26 @@
                   <span><i class="dashed"></i>средний студент · 540 kB</span>
                 </span>
               </div>
-              <p class="muted-copy">Накопленный XP в сравнении со средним по всем потокам</p>
+              <p class="muted-copy">XP за выбранный период в сравнении со студентами из выбранной группы</p>
+              <div class="compare-toolbar">
+                <label class="select-control" for="compare-period">
+                  <span>Период</span>
+                  <select id="compare-period">
+                    <option value="start">since the start of the course</option>
+                    <option value="week">for the last week</option>
+                    <option value="month">for the last month</option>
+                    <option value="3m">for the last 3 months</option>
+                    <option value="6m" selected>for the last 6 months</option>
+                  </select>
+                </label>
+                <label class="select-control" for="compare-population">
+                  <span>Population</span>
+                  <select id="compare-population">
+                    <option value="all" selected>All students</option>
+                    <option value="batch">Batch 3</option>
+                  </select>
+                </label>
+              </div>
               <div id="compare-chart"></div>
             </section>
             <section class="wide-card" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
@@ -519,6 +466,16 @@
                 <strong id="histogram-bins-label">50</strong>
               </div>
               <div id="distribution-chart"></div>
+            </section>
+            <section class="wide-card project-xp-card">
+              <div class="section-title-row">
+                <h3>XP по проектам</h3>
+              </div>
+              <div id="project-chart" class="project-xp-list"></div>
+              <div class="project-list-actions">
+                <button id="project-list-more" class="project-list-more" type="button">Показать следующие</button>
+                <button id="project-list-all" class="project-list-more" type="button">Показать все</button>
+              </div>
             </section>
           </section>
 
@@ -547,7 +504,13 @@
               <button type="button" data-board-filter="Batch 9">Batch 9</button>
               <button type="button" data-board-filter="Staff">Staff</button>
             </div>
-            <div id="board-count-note" class="board-note" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">Статичный snapshot dashboard · показано: 507</div>
+            <div class="board-toolbar">
+              <div id="board-count-note" class="board-note" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">Статичный snapshot dashboard · показано: 507</div>
+              <div class="board-search" role="search">
+                <label for="board-search-input">Поиск</label>
+                <input id="board-search-input" type="search" autocomplete="off" placeholder="тег, имя или фамилия">
+              </div>
+            </div>
             <section class="leaderboard-card" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
               <div class="leaderboard-table">
                 <div class="leader-head"><span>РАНГ</span><span></span><span>СТУДЕНТ</span><span>УР.</span><span>XP</span><span>ЧАСЫ</span><span>ПРОЕКТ</span><span>ТРЕНД</span></div>
@@ -562,7 +525,7 @@
                 <p>// ВИТРИНА</p>
                 <h2>Публичный профиль</h2>
               </div>
-              <span>так тебя видят команды</span>
+              <span>так тебя видят другие</span>
             </div>
             <div class="notice-strip" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
               <span>👁</span>
@@ -572,17 +535,23 @@
               <div id="public-avatar" class="avatar avatar-large">—</div>
               <div class="public-main">
                 <h1 id="public-name">—</h1>
-                <div><span id="public-handle">@—</span><span id="public-meta" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">· Batch 3 · Astana</span></div>
-                <p id="public-availability" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data."><i></i>Доступен для команды</p>
+                <div><span id="public-handle">@—</span><span id="public-meta" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">· Поток 3</span></div>
+                <p id="public-availability"><i></i>Доступен</p>
               </div>
               <div class="public-stats">
-                <div data-placeholder tabindex="0" aria-label="Under construction. Placeholder data."><strong id="public-level">32</strong><span>уровень</span></div>
-                <div><strong id="public-total-xp">0 B</strong><span>всего XP</span></div>
-                <div><strong id="public-audit-ratio" class="lime-text">0</strong><span>audit ratio</span></div>
+                <div class="public-stat public-stat-level" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data."><strong id="public-level">32</strong><span>уровень</span></div>
+                <div class="public-stat public-stat-xp">
+                  <strong id="public-total-xp">0 B</strong>
+                  <span>всего XP</span>
+                  <div class="public-substat public-audit-ratio">
+                    <strong id="public-audit-ratio">0</strong>
+                    <span>audit ratio</span>
+                  </div>
+                </div>
               </div>
             </section>
             <section class="wide-card" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
-              <div class="section-title-row"><h3>Командная работа</h3><span>по совместным проектам и аудитам</span></div>
+              <div class="section-title-row team-section-title"><h3>Командная работа</h3></div>
               <div id="team-tags" class="team-tags">
                 <div><span>🤝</span><strong>Командный игрок</strong><small>22 совместных проекта</small></div>
                 <div><span>⚖️</span><strong>Честный аудитор</strong><small>48 проведённых аудитов</small></div>
@@ -609,7 +578,7 @@
                 </div>
               </div>
             </section>
-            <section class="wide-card radar-card" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
+            <section class="wide-card radar-card public-radar-card" data-placeholder tabindex="0" aria-label="Under construction. Placeholder data.">
               <div class="section-title-row">
                 <h3>Навыки</h3>
                 <span class="segmented public-radar-controls">
@@ -624,6 +593,6 @@
       </section>
     </div>
 
-    <script type="module" src="js/app.js?v=20260628-live-data10"></script>
+    <script type="module" src="js/app.js?v=20260629-public-profile2"></script>
   </body>
 </html>
