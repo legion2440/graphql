@@ -22,7 +22,7 @@ import {
   setLoginLoading,
   setView,
   updateLoadingStage,
-} from "./ui.js?v=20260629-public-profile2";
+} from "./ui.js?v=20260629-skills-radar1";
 
 const LOGIN_LOADING_MIN_MS = 1500;
 

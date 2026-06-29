@@ -878,9 +878,14 @@ function radarAxes(skills, limit = 8) {
     .filter((skill) => skill.total > 0)
     .slice(0, limit)
     .map((skill) => ({
-      label: skill.key.length <= 8 ? skill.key : skill.label.split(/\s+/).map((word) => word[0]).join(""),
+      label: formatRadarAxisLabel(skill),
       value: skill.value,
     }));
+}
+
+function formatRadarAxisLabel(skill) {
+  const label = String(skill?.key || skill?.label || "");
+  return label.length <= 12 ? label : `${label.slice(0, 11)}…`;
 }
 
 const compareMonthFormatter = new Intl.DateTimeFormat("ru-RU", {
